@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { ScanBarcode, Search, X } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
 import { readCart, writeCart } from '../lib/cart.js';
 import { count } from '../lib/format.js';
 import { Cart } from '../components/catalog/Cart.jsx';
+import { CategoryNav, categoryPath } from '../components/catalog/CategoryNav.jsx';
 import { OrderReview } from '../components/catalog/OrderReview.jsx';
 import { ProductRow, ProductRowSkeleton } from '../components/catalog/ProductRow.jsx';
 import { Scanner } from '../components/catalog/Scanner.jsx';
@@ -41,8 +42,10 @@ export function Catalog({ session }) {
     if (!response.ok) throw new Error(`API โหลดสินค้าไม่สำเร็จ (HTTP ${response.status}) กรุณาตรวจสอบ Terminal ของ API`);
     return response.json();
   }
-  const [departments, setDepartments] = useState([]);
-  const [department, setDepartment] = useState('');
+  const [groups, setGroups] = useState([]);
+  // The shelf lives in the URL (?g=&d=&s=) so refresh, back and shared links keep it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const category = { g: searchParams.get('g') || '', d: searchParams.get('d') || '', s: searchParams.get('s') || '' };
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
   const listRef = useRef(null);
@@ -67,20 +70,21 @@ export function Catalog({ session }) {
   const [scanNotice, setScanNotice] = useState(location.state?.notice || '');
 
   useEffect(() => {
-    if (location.state?.notice) navigate(location.pathname, { replace: true, state: null });
+    if (location.state?.notice) navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
   }, []);
 
   useEffect(() => {
     apiFetch(`${apiUrl}/products/departments`)
       .then(catalogData)
-      .then(data => setDepartments(data.data))
+      .then(data => setGroups(data.data))
       .catch(() => setError('ไม่สามารถโหลดประเภทสินค้าได้'));
   }, []);
 
   async function loadProducts() {
     const params = new URLSearchParams({ q: submittedQuery, limit: String(PAGE_SIZE), offset: String((page - 1) * PAGE_SIZE) });
     if (page === 1) params.set('includeTotal', 'true');
-    if (department) params.set('departmentId', department);
+    if (category.s || category.d) params.set('departmentId', category.s || category.d);
+    else if (category.g) params.set('groupId', category.g);
     setLoading(true);
     setError('');
     try {
@@ -98,7 +102,7 @@ export function Catalog({ session }) {
 
   useEffect(() => {
     loadProducts();
-  }, [submittedQuery, department, retry, page]);
+  }, [submittedQuery, category.g, category.d, category.s, retry, page]);
 
   useEffect(() => {
     writeCart(session.uid, cart);
@@ -116,6 +120,13 @@ export function Catalog({ session }) {
 
   function updateCart(goodsId, quantity) {
     setCart(items => quantity === 0 ? items.filter(item => item.goodsId !== goodsId) : items.map(item => item.goodsId === goodsId ? { ...item, quantity } : item));
+  }
+
+  function chooseCategory(next) {
+    setPage(1);
+    const params = new URLSearchParams();
+    for (const key of ['g', 'd', 's']) if (next[key]) params.set(key, next[key]);
+    setSearchParams(params);
   }
 
   function clearSearch() {
@@ -143,6 +154,7 @@ export function Catalog({ session }) {
   }
 
   const inCart = new Map(cart.map(item => [item.goodsId, item.quantity]));
+  const shelfPath = categoryPath(groups, category);
 
   return (
     <>
@@ -161,11 +173,8 @@ export function Catalog({ session }) {
             </InputGroup>
             <Button size="lg">ค้นหา</Button>
           </form>
-          <nav className="type-tabs" aria-label="ประเภทสินค้า">
-            <button type="button" aria-pressed={!department} onClick={() => { setPage(1); setDepartment(''); }}>ทั้งหมด</button>
-            {departments.map(item => (
-              <button type="button" key={item.id} aria-pressed={String(item.id) === department} onClick={() => { setPage(1); setDepartment(String(item.id)); }}>{item.name}</button>
-            ))}
+          <nav aria-label="หมวดหมู่สินค้า">
+            <CategoryNav groups={groups} value={category} onChange={chooseCategory} />
           </nav>
           {scanNotice && (
             <div className="notice" role="status">
@@ -176,7 +185,7 @@ export function Catalog({ session }) {
           <section ref={listRef} className="panel catalog" aria-live="polite" aria-busy={loading}>
             <div className="catalog-head">
               <span>
-                {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
+                {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{shelfPath.length > 0 && <> ใน {shelfPath.join(' › ')}</>}{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
               </span>
               {submittedQuery && <button type="button" className="link-button" onClick={clearSearch}>ล้างการค้นหา</button>}
             </div>

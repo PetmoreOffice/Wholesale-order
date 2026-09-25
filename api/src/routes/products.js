@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { dialect, query } from '../config/db.js';
+import { departmentIdsForGroup, departmentTree } from '../catalog/departments.js';
 import { catalogFields, productJoins, sellableOnly } from '../catalog/sql.js';
 
 export const productsRouter = Router();
@@ -10,17 +11,18 @@ function toPositiveInteger(value, fallback, maximum) {
   return Math.min(parsed, maximum);
 }
 
-function catalogStatement() {
+function catalogStatement(groupDepartmentIds) {
   const pagination = dialect === 'mssql'
     ? 'ORDER BY name, goodsId OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY'
     : 'ORDER BY name, goodsId LIMIT @limit OFFSET @offset';
   return `SELECT ${catalogFields}
     ${productJoins}
-    ${catalogWhere()}
+    ${catalogWhere(groupDepartmentIds)}
     ${pagination}`;
 }
 
-function catalogWhere() {
+// groupDepartmentIds: every ICDEPT key in the chosen group, sent as bound parameters.
+function catalogWhere(groupDepartmentIds = []) {
   const matching = dialect === 'mssql'
     ? `g.GOODS_CODE LIKE '%' + @term + '%' OR s.SKU_CODE LIKE '%' + @term + '%'
        OR s.SKU_BARCODE LIKE '%' + @term + '%' OR s.SKU_NAME LIKE '%' + @term + '%'
@@ -30,7 +32,8 @@ function catalogWhere() {
        OR g.GOODS_ALIAS LIKE CONCAT('%', @term, '%')`;
   return `WHERE ${sellableOnly} AND (@term = '' OR ${matching})
     AND (@categoryId IS NULL OR s.SKU_ICCAT = @categoryId)
-    AND (@departmentId IS NULL OR d.ICDEPT_KEY = @departmentId OR d.ICDEPT_PARENT = @departmentId)`;
+    AND (@departmentId IS NULL OR d.ICDEPT_KEY = @departmentId OR d.ICDEPT_PARENT = @departmentId)
+    ${groupDepartmentIds.length ? `AND d.ICDEPT_KEY IN (${groupDepartmentIds.map((_, index) => '@groupDept' + index).join(', ')})` : ''}`;
 }
 
 productsRouter.get('/', async (req, res, next) => {
@@ -40,16 +43,21 @@ productsRouter.get('/', async (req, res, next) => {
     const includeTotal = req.query.includeTotal === 'true';
     const categoryId = req.query.categoryId ? Number.parseInt(req.query.categoryId, 10) : null;
     const departmentId = req.query.departmentId ? Number.parseInt(req.query.departmentId, 10) : null;
+    // A department narrows further than a group, so the group only applies on its own.
+    const groupId = !Number.isInteger(departmentId) && typeof req.query.groupId === 'string' ? req.query.groupId : null;
+    const groupDepartmentIds = groupId ? await departmentIdsForGroup(groupId) : [];
+    if (groupId && !groupDepartmentIds) return res.status(400).json({ error: 'INVALID_GROUP', message: 'ไม่พบกลุ่มสินค้านี้' });
     const params = {
       term: (req.query.q || '').trim(),
       categoryId: Number.isInteger(categoryId) ? categoryId : null,
       departmentId: Number.isInteger(departmentId) ? departmentId : null,
       limit: pageSize,
-      offset
+      offset,
+      ...Object.fromEntries(groupDepartmentIds.map((id, index) => ['groupDept' + index, id]))
     };
     const [rows, countRows] = await Promise.all([
-      query(catalogStatement(), params),
-      includeTotal ? query(`SELECT COUNT(*) AS total ${productJoins} ${catalogWhere()}`, params) : Promise.resolve(null)
+      query(catalogStatement(groupDepartmentIds), params),
+      includeTotal ? query(`SELECT COUNT(*) AS total ${productJoins} ${catalogWhere(groupDepartmentIds)}`, params) : Promise.resolve(null)
     ]);
     const total = countRows ? Number(countRows[0]?.total || 0) : undefined;
     res.json({ data: rows, pagination: {
@@ -73,23 +81,12 @@ productsRouter.get('/categories', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Three-level shelf for the catalog: group (สุนัข, แมว, …) → department → sub-department,
+// each with its count of sellable products. Nodes without products are left out.
 productsRouter.get('/departments', async (_req, res, next) => {
   try {
-    const rows = await query(
-      `SELECT root.ICDEPT_KEY AS id, root.ICDEPT_CODE AS code,
-              COALESCE(NULLIF(LTRIM(RTRIM(root.ICDEPT_THAIDESC)), ''), root.ICDEPT_ENGDESC) AS name
-       FROM dbo.ICDEPT root
-       WHERE root.ICDEPT_LEVEL = 0 AND root.ICDEPT_KEY <> 0
-         AND EXISTS (
-           SELECT 1
-           FROM dbo.GOODSMASTER g
-           INNER JOIN dbo.SKUMASTER s ON s.SKU_KEY = g.GOODS_SKU
-           LEFT JOIN dbo.ICDEPT d ON d.ICDEPT_KEY = s.SKU_ICDEPT
-           WHERE ${sellableOnly} AND (d.ICDEPT_KEY = root.ICDEPT_KEY OR d.ICDEPT_PARENT = root.ICDEPT_KEY)
-         )
-       ORDER BY root.ICDEPT_CODE`
-    );
-    res.json({ data: rows });
+    const groups = await departmentTree();
+    res.json({ data: groups.map(({ departmentIds, ...group }) => group) });
   } catch (error) { next(error); }
 });
 

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 
 export function ProductRow({ product, inCart = 0, onAdd }) {
   const hasPrice = Number(product.basePrice) > 0;
-  const group = product.departmentName || product.categoryName || 'ไม่ระบุกลุ่ม';
+  // categoryName comes from ICCAT, which holds suppliers, not product groups.
+  const group = product.departmentName || 'ไม่ระบุหมวด';
   const unit = `${product.unitName || 'ไม่ระบุหน่วย'}${product.unitQuantity > 1 ? ` × ${count.format(product.unitQuantity)}` : ''}`;
   const atMaximum = Number(product.maximumOrder) > 0 && inCart >= Number(product.maximumOrder);
   return (

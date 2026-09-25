@@ -28,8 +28,9 @@ The user must sign out and sign in again after a role change.
 ## Endpoints
 
 - `GET /api/health` — verifies database connectivity.
-- `GET /api/products?q=SKU-or-name&categoryId=&limit=50&offset=0` — searches published, sellable catalog rows.
-- `GET /api/products/categories` — lists groups from `ICCAT` that have published products.
+- `GET /api/products?q=SKU-or-name&departmentId=&groupId=&limit=50&offset=0` — searches published, sellable catalog rows. `departmentId` accepts a department (includes its sub-departments) or a sub-department; `groupId` (`dog`, `cat`, `other-pets`, `supplies`, `other`) filters a whole shelf group.
+- `GET /api/products/departments` — shelf tree for the catalog: group → `ICDEPT` level 0 → level 1, each with its sellable product count (cached 10 minutes). Groups are derived from the department code's leading digit in `src/catalog/departments.js`.
+- `GET /api/products/categories` — lists `ICCAT` rows that have published products. Note: `ICCAT` holds suppliers, not product groups.
 - `GET /api/products/barcode/:barcode` — looks up every matching sellable unit after a mobile scan.
 - `GET /api/products/:goodsId` — returns a product detail by its sellable GOODS row.
 - POST /api/orders/drafts — saves a server-validated draft to the local JSON order store.
