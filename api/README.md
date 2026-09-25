@@ -8,6 +8,10 @@
 4. Add Firebase Admin service-account values from `firebase.env.example` to `.env`.
 5. Start the API: `npm run dev`.
 
+## Production
+
+When `web/dist` exists (after `npm run build` in `web/`), the API also serves the website and answers browser routes such as `/settings` with the app, so one Node process runs everything. Unknown `/api/*` paths return a JSON 404. `HOST` sets the listen address (use `127.0.0.1` behind IIS) and `WEB_DIST` overrides the site folder. Windows Server steps are in [../DEPLOY.md](../DEPLOY.md).
+
 ## Authentication and roles
 
 - Firebase Authentication handles Email/Password sign-in and password reset.

@@ -4,3 +4,4 @@ secrets/
 *service-account*.json
 data/
 *.tmp
+logs/
