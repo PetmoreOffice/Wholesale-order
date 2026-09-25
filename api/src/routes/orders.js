@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { query } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { catalogFields, orderItemFields, orderItemJoins, productJoins, sellableOnly } from '../catalog/sql.js';
-import { addHistory, changeStore, findOrder, orderSummary, readStore } from '../orders/store.js';
+import { addHistory, changeStore, findArchivedOrder, findOrder, orderSummary, readStore } from '../orders/store.js';
 
 export const ordersRouter = Router();
 ordersRouter.use(requireAuth);
@@ -25,6 +25,9 @@ const adminTransitions = {
 
 // Customers must know what to fix or why the order stopped.
 const messageRequired = new Set(['need_information', 'rejected']);
+
+// A customer may withdraw an order until an admin approves it.
+const customerCancellable = new Set(['submitted', 'assigned', 'need_information']);
 
 const errorStatus = {
   BAD_REQUEST: [400, 'INVALID_ORDER_REQUEST'],
@@ -63,6 +66,18 @@ function parseOrderId(value) {
 
 function ownOrder(store, orderId, user) {
   const order = findOrder(store, orderId);
+  if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
+  if (order.customerId !== user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');
+  return order;
+}
+
+// Looks in the live store first, then in the yearly archive files.
+async function loadOrder(orderId) {
+  return findOrder(await readStore(), orderId) || await findArchivedOrder(orderId);
+}
+
+async function ownOrderAnywhere(orderId, user) {
+  const order = await loadOrder(orderId);
   if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
   if (order.customerId !== user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');
   return order;
@@ -213,6 +228,39 @@ ordersRouter.patch('/:orderId/draft', requireRole('customer'), async (req, res, 
   } catch (error) { return handleOrderError(res, next, error); }
 });
 
+// Drafts were never sent, so the customer may throw one away entirely.
+ordersRouter.delete('/:orderId', requireRole('customer'), async (req, res, next) => {
+  try {
+    const orderId = parseOrderId(req.params.orderId);
+    await changeStore((store) => {
+      const order = ownOrder(store, orderId, req.user);
+      if (order.status !== 'draft') throw orderError('INVALID_STATUS', 'ลบได้เฉพาะร่างคำสั่งซื้อ คำสั่งซื้อที่ส่งแล้วให้ใช้การยกเลิก');
+      store.orders = store.orders.filter((row) => row.orderId !== orderId);
+    });
+    return res.json({ data: { orderId, deleted: true } });
+  } catch (error) { return handleOrderError(res, next, error); }
+});
+
+ordersRouter.post('/:orderId/cancel', requireRole('customer'), async (req, res, next) => {
+  try {
+    const orderId = parseOrderId(req.params.orderId);
+    const reason = cleanText(req.body.reason);
+    const result = await changeStore((store) => {
+      const order = ownOrder(store, orderId, req.user);
+      if (!customerCancellable.has(order.status)) throw orderError('INVALID_STATUS', 'คำสั่งซื้อนี้ยกเลิกเองไม่ได้แล้ว กรุณาติดต่อแอดมิน');
+      const fromStatus = order.status;
+      const now = new Date().toISOString();
+      order.status = 'cancelled';
+      order.cancelledAt = now;
+      order.updatedAt = now;
+      addHistory(order, { fromStatus, toStatus: 'cancelled', actorRole: 'customer', actorId: req.user.uid, actorName: req.user.name, message: reason ? 'ยกเลิกคำสั่งซื้อ: ' + reason : 'ยกเลิกคำสั่งซื้อ' });
+      if (reason) order.messages.push({ messageId: randomUUID(), senderRole: 'customer', senderName: req.user.name, messageBody: reason, createdAt: now, visibleToCustomer: true });
+      return customerView(order);
+    });
+    return res.json({ data: result });
+  } catch (error) { return handleOrderError(res, next, error); }
+});
+
 ordersRouter.post('/:orderId/reply', requireRole('customer'), async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
@@ -238,8 +286,7 @@ ordersRouter.post('/:orderId/reply', requireRole('customer'), async (req, res, n
 ordersRouter.get('/:orderId/reorder-items', requireRole('customer'), async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
-    const order = ownOrder(await readStore(), orderId, req.user);
-    if (order.status === 'draft') throw orderError('INVALID_STATUS', 'ร่างคำสั่งซื้อแก้ไขได้โดยตรง ไม่ต้องสั่งซ้ำ');
+    const order = await ownOrderAnywhere(orderId, req.user);
     const items = [];
     const unavailable = [];
     const adjusted = [];
@@ -255,7 +302,9 @@ ordersRouter.get('/:orderId/reorder-items', requireRole('customer'), async (req,
       let quantity = Math.max(minimum, Number.parseInt(line.quantity, 10) || minimum);
       if (maximum > 0) quantity = Math.min(maximum, quantity);
       if (quantity !== Number(line.quantity)) adjusted.push({ goodsId: line.goodsId, name: product.name, from: Number(line.quantity), to: quantity });
-      items.push({ ...product, quantity });
+      // Customers never receive prices, including on a repeat order.
+      const { basePrice, ...sellable } = product;
+      items.push({ ...sellable, quantity });
     }
     return res.json({ data: { orderId, orderNumber: order.orderNumber, items, unavailable, adjusted } });
   } catch (error) { return handleOrderError(res, next, error); }
@@ -341,7 +390,7 @@ ordersRouter.post('/:orderId/status', requireRole('admin'), async (req, res, nex
 ordersRouter.get('/:orderId', async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
-    const order = findOrder(await readStore(), orderId);
+    const order = await loadOrder(orderId);
     if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
     if (req.user.role === 'admin') return res.json({ data: order });
     if (order.customerId !== req.user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');

@@ -14,6 +14,7 @@ const customerText = {
 
 export function notificationTitle(event, role) {
   if (role === 'admin') {
+    if (event.toStatus === 'cancelled') return `${event.customerName} ยกเลิกคำสั่งซื้อ`;
     if (event.fromStatus === 'need_information') return `${event.customerName} ตอบข้อมูลเพิ่มแล้ว`;
     return `คำสั่งซื้อใหม่จาก ${event.customerName}`;
   }

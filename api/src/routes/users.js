@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { firebaseAuth } from '../config/firebase.js';
 import { forgetAccountStatus, requireAuth, requireRole, roles } from '../middleware/auth.js';
-import { changeStore, readStore } from '../orders/store.js';
+import { changeStore, logActivity, readStore } from '../orders/store.js';
 import { forget, presenceOf } from '../users/presence.js';
 
 // Admin user management. Sign-in accounts live in this project's own Firebase Auth; the
@@ -14,6 +14,11 @@ export const profileRouter = Router();
 profileRouter.use(requireAuth);
 
 const MAX_USERS = 1000;
+const roleText = { admin: 'แอดมิน', customer: 'ลูกค้า' };
+
+function activity(req, action, target, detail) {
+  return { actorId: req.user.uid, actorName: req.user.name, action, targetId: target.uid, targetName: target.displayName || target.email || target.uid, detail };
+}
 const profileFields = { companyName: 200, phone: 50, address: 1000, taxId: 20, note: 2000 };
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -110,6 +115,7 @@ usersRouter.post('/', async (req, res, next) => {
     }
     await changeStore((store) => {
       store.customers[user.uid] = { ...profile, createdAt: new Date().toISOString(), createdBy: req.user.uid };
+      logActivity(store, activity(req, 'user.created', { uid: user.uid, displayName, email }, 'สร้างบัญชี' + roleText[role] + ' ' + email));
     });
     const created = await firebaseAuth().getUser(user.uid);
     const store = await readStore();
@@ -134,6 +140,10 @@ usersRouter.patch('/:uid', async (req, res, next) => {
       if (uid === req.user.uid) return badRequest(res, 'เปลี่ยนบทบาทของบัญชีตัวเองไม่ได้');
       if (currentRole === 'admin') await assertOtherAdmin(uid);
     }
+    const changes = [];
+    if (updates.displayName && updates.displayName !== current.displayName) changes.push('ชื่อ: ' + (current.displayName || '-') + ' → ' + updates.displayName);
+    if (roleChanged) changes.push('บทบาท: ' + (roleText[currentRole] || 'ไม่มี') + ' → ' + roleText[req.body.role]);
+    if (req.body.profile !== undefined) changes.push('ข้อมูลลูกค้า');
     if (Object.keys(updates).length) await firebaseAuth().updateUser(uid, updates);
     if (roleChanged) {
       await firebaseAuth().setCustomUserClaims(uid, { ...(current.customClaims || {}), role: req.body.role });
@@ -142,13 +152,13 @@ usersRouter.patch('/:uid', async (req, res, next) => {
       forgetAccountStatus(uid);
       forget(uid);
     }
-    if (req.body.profile !== undefined) {
-      const profile = cleanProfile(req.body.profile);
-      await changeStore((store) => {
+    await changeStore((store) => {
+      if (req.body.profile !== undefined) {
         const { createdAt, createdBy } = store.customers[uid] || {};
-        store.customers[uid] = { ...profile, createdAt, createdBy, updatedAt: new Date().toISOString(), updatedBy: req.user.uid };
-      });
-    }
+        store.customers[uid] = { ...cleanProfile(req.body.profile), createdAt, createdBy, updatedAt: new Date().toISOString(), updatedBy: req.user.uid };
+      }
+      if (changes.length) logActivity(store, activity(req, roleChanged ? 'user.role_changed' : 'user.updated', { ...current, displayName: updates.displayName || current.displayName }, 'แก้ไข ' + changes.join(', ')));
+    });
     const [user, store] = await Promise.all([firebaseAuth().getUser(uid), readStore()]);
     return res.json({ data: userView(user, store.customers[uid]) });
   } catch (error) { return handleUserError(res, next, error); }
@@ -167,6 +177,7 @@ usersRouter.patch('/:uid/status', async (req, res, next) => {
     if (disabled) await firebaseAuth().revokeRefreshTokens(uid);
     forgetAccountStatus(uid);
     if (disabled) forget(uid);
+    await changeStore((store) => logActivity(store, activity(req, disabled ? 'user.disabled' : 'user.enabled', current, disabled ? 'ปิดใช้งานบัญชี และออกจากระบบทุกอุปกรณ์' : 'เปิดใช้งานบัญชี')));
     const [user, store] = await Promise.all([firebaseAuth().getUser(uid), readStore()]);
     return res.json({ data: userView(user, store.customers[uid]) });
   } catch (error) { return handleUserError(res, next, error); }

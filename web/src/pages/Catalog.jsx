@@ -49,9 +49,14 @@ export function Catalog({ session }) {
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
   const listRef = useRef(null);
+  // Every catalog request gets a number; only the newest one may update the list.
+  const requestRef = useRef(0);
+  // While a scan result is shown, the page reset it causes must not reload the catalog over it.
+  const [scanMode, setScanMode] = useState(false);
 
   // Pagination buttons sit under the list: bring the new page's first product into view.
   function goToPage(nextPage) {
+    setScanMode(false);
     setPage(nextPage);
     const list = listRef.current;
     if (list && list.getBoundingClientRect().top < 0) {
@@ -85,24 +90,28 @@ export function Catalog({ session }) {
     if (page === 1) params.set('includeTotal', 'true');
     if (category.s || category.d) params.set('departmentId', category.s || category.d);
     else if (category.g) params.set('groupId', category.g);
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError('');
     try {
       const data = await apiFetch(`${apiUrl}/products?${params}`).then(catalogData);
+      if (requestId !== requestRef.current) return;
       const items = data.data || [];
       setProducts(items);
       if (Number.isInteger(data.pagination?.totalPages)) setTotalPages(data.pagination.totalPages);
       if (Number.isInteger(data.pagination?.total)) setTotalProducts(data.pagination.total);
     } catch (err) {
+      if (requestId !== requestRef.current) return;
       setError(err instanceof TypeError ? 'เชื่อมต่อ API ไม่สำเร็จ กรุณาตรวจสอบว่า API เปิดอยู่และอนุญาต URL ของหน้าเว็บนี้' : err.message);
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
   }
 
   useEffect(() => {
+    if (scanMode) return;
     loadProducts();
-  }, [submittedQuery, category.g, category.d, category.s, retry, page]);
+  }, [submittedQuery, category.g, category.d, category.s, retry, page, scanMode]);
 
   useEffect(() => {
     writeCart(session.uid, cart);
@@ -123,6 +132,7 @@ export function Catalog({ session }) {
   }
 
   function chooseCategory(next) {
+    setScanMode(false);
     setPage(1);
     const params = new URLSearchParams();
     for (const key of ['g', 'd', 's']) if (next[key]) params.set(key, next[key]);
@@ -130,7 +140,7 @@ export function Catalog({ session }) {
   }
 
   function clearSearch() {
-    setQuery(''); setPage(1); setSubmittedQuery('');
+    setQuery(''); setPage(1); setSubmittedQuery(''); setScanMode(false);
   }
 
   async function scan(barcode) {
@@ -140,6 +150,11 @@ export function Catalog({ session }) {
       const response = await apiFetch(`${apiUrl}/products/barcode/${encodeURIComponent(barcode)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
+      // Drop any catalog page still loading and keep this result on screen.
+      requestRef.current += 1;
+      setScanMode(true);
+      setLoading(false);
+      setError('');
       if (data.requiresUnitSelection) {
         setScanNotice(`พบ ${data.data.length} หน่วยขาย — เลือกหน่วยก่อนเพิ่มลงตะกร้า`);
       } else {
@@ -154,6 +169,8 @@ export function Catalog({ session }) {
   }
 
   const inCart = new Map(cart.map(item => [item.goodsId, item.quantity]));
+  // Prices are admin-only; the API does not send them to customers either.
+  const showPrice = session.role === 'admin';
 
   return (
     <>
@@ -164,7 +181,7 @@ export function Catalog({ session }) {
             description="ค้นหาด้วยชื่อ, SKU หรือบาร์โค้ด แล้วเลือกหน่วยขายก่อนเพิ่มลงตะกร้า"
             actions={<Button type="button" variant="outline" size="lg" onClick={() => setScanner(true)}><ScanBarcode aria-hidden="true" /> สแกนบาร์โค้ด</Button>}
           />
-          <form className="search-bar" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setSubmittedQuery(query.trim()); }}>
+          <form className="search-bar" role="search" onSubmit={e => { e.preventDefault(); setScanMode(false); setPage(1); setSubmittedQuery(query.trim()); }}>
             <label className="sr-only" htmlFor="search">ค้นหาสินค้า</label>
             <InputGroup className="search-field h-10 bg-card">
               <InputGroupInput id="search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="ชื่อสินค้า, SKU หรือบาร์โค้ด" autoComplete="off" />
@@ -181,25 +198,25 @@ export function Catalog({ session }) {
               <button type="button" className="icon-button" onClick={() => setScanNotice('')} aria-label="ปิดข้อความ"><X aria-hidden="true" /></button>
             </div>
           )}
-          <section ref={listRef} className="panel catalog" aria-live="polite" aria-busy={loading}>
+          <section ref={listRef} className="panel catalog" data-prices={showPrice ? undefined : 'hidden'} aria-live="polite" aria-busy={loading}>
             <div className="catalog-head">
               <span>
                 {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
               </span>
               {submittedQuery && <button type="button" className="link-button" onClick={clearSearch}>ล้างการค้นหา</button>}
             </div>
-            <div className="catalog-columns" aria-hidden="true"><span>สินค้า</span><span>ขั้นต่ำ</span><span>ราคาอ้างอิง</span><span /></div>
+            <div className="catalog-columns" aria-hidden="true"><span>สินค้า</span><span>ขั้นต่ำ</span>{showPrice && <span>ราคาอ้างอิง</span>}<span /></div>
             {error ? (
               <div className="state" data-tone="danger">
                 <b>โหลดสินค้าไม่สำเร็จ</b>
                 <p>{error}</p>
-                <Button type="button" variant="outline" onClick={() => setRetry(value => value + 1)}>ลองใหม่</Button>
+                <Button type="button" variant="outline" onClick={() => { setScanMode(false); setRetry(value => value + 1); }}>ลองใหม่</Button>
               </div>
             ) : loading ? (
               Array.from({ length: 6 }, (_, index) => <ProductRowSkeleton key={index} />)
             ) : products.length ? (
               <>
-                {products.map(product => <ProductRow key={`${product.goodsId}-${product.unitId || ''}`} product={product} inCart={inCart.get(product.goodsId) || 0} onAdd={add} />)}
+                {products.map(product => <ProductRow key={`${product.goodsId}-${product.unitId || ''}`} product={product} inCart={inCart.get(product.goodsId) || 0} onAdd={add} showPrice={showPrice} />)}
                 {totalPages > 1 && (
                   <nav className="catalog-pagination" aria-label="เปลี่ยนหน้าสินค้า">
                     <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => goToPage(page - 1)}>ก่อนหน้า</Button>
@@ -220,7 +237,7 @@ export function Catalog({ session }) {
               </div>
             )}
           </section>
-          <p className="catalog-footnote">ซ่อนสินค้าที่เลิกผลิตแล้ว · ราคาสุทธิยืนยันโดยแอดมินหลังส่งคำสั่งซื้อ</p>
+          <p className="catalog-footnote">ซ่อนสินค้าที่เลิกผลิตแล้ว{showPrice ? ' · ราคาอ้างอิงจาก GOODSMASTER แสดงเฉพาะแอดมิน' : ' · แอดมินจะติดต่อยืนยันรายละเอียดหลังตรวจคำสั่งซื้อ'}</p>
         </AnimatedContent>
         <AnimatedContent className="catalog-cart" distance={12} direction="horizontal" reverse delay={0.06}>
           <Cart items={cart} onChange={updateCart} onReview={() => setReview(true)} />

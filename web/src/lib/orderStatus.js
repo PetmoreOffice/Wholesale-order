@@ -8,7 +8,8 @@ export const statusText = {
   preparing: 'กำลังเตรียมสินค้า',
   shipped: 'จัดส่งแล้ว',
   completed: 'เสร็จสมบูรณ์',
-  rejected: 'ปฏิเสธ'
+  rejected: 'ปฏิเสธ',
+  cancelled: 'ยกเลิกแล้ว'
 };
 
 // Tone drives color; every tone is always paired with an icon and the written label.
@@ -22,10 +23,14 @@ export const statusTone = {
   preparing: 'progress',
   shipped: 'progress',
   completed: 'success',
-  rejected: 'danger'
+  rejected: 'danger',
+  cancelled: 'neutral'
 };
 
-export const closedStatuses = ['completed', 'rejected'];
+export const closedStatuses = ['completed', 'rejected', 'cancelled'];
+
+// Must match the API: a customer may withdraw an order until an admin approves it.
+export const customerCancellable = ['submitted', 'assigned', 'need_information'];
 
 export const adminActions = {
   submitted: [],
@@ -60,5 +65,6 @@ export const customerNextStep = {
   preparing: { owner: 'admin', text: 'กำลังเตรียมสินค้า' },
   shipped: { owner: 'admin', text: 'สินค้าอยู่ระหว่างจัดส่ง' },
   completed: { owner: null, text: 'คำสั่งซื้อเสร็จสมบูรณ์' },
-  rejected: { owner: 'customer', text: 'อ่านเหตุผล แล้วสร้างคำสั่งซื้อใหม่หรือติดต่อแอดมิน' }
+  rejected: { owner: 'customer', text: 'อ่านเหตุผล แล้วสร้างคำสั่งซื้อใหม่หรือติดต่อแอดมิน' },
+  cancelled: { owner: null, text: 'คุณยกเลิกคำสั่งซื้อนี้แล้ว' }
 };

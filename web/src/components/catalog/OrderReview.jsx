@@ -127,9 +127,9 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
         <Textarea id="delivery" readOnly={!!order || saving} value={delivery} onChange={event => setDelivery(event.target.value)} placeholder="ระบุที่อยู่ จุดรับสินค้า หรือผู้ติดต่อ" rows="3" />
         <Label htmlFor="note">หมายเหตุถึงแอดมิน</Label>
         <Textarea id="note" readOnly={!!order || saving} value={note} onChange={event => setNote(event.target.value)} placeholder="เช่น วันที่ต้องการรับสินค้า หรือคำขอเพิ่มเติม" rows="3" />
-        <div className="callout" data-tone="attention">
-          <b>ราคาสุทธิยืนยันภายหลัง</b>
-          <span>แอดมินจะยืนยันราคาตามบัญชีของคุณหลังตรวจคำสั่งซื้อ</span>
+        <div className="callout" data-tone="info">
+          <b>แอดมินจะตรวจคำสั่งซื้อก่อนดำเนินการ</b>
+          <span>หากต้องการข้อมูลเพิ่ม แอดมินจะแจ้งในหน้าคำสั่งซื้อนี้</span>
         </div>
         {saved && <p className="form-notice" role="status">{order.status === 'draft' ? 'บันทึกร่างแล้ว' : 'ส่งคำสั่งซื้อให้แอดมินตรวจสอบแล้ว'} · <span className="num">{order.orderNumber}</span></p>}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}

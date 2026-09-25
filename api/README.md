@@ -48,6 +48,12 @@ The user must sign out and sign in again after a role change.
 - `POST /api/admin/users` — Admin: creates a Firebase account (no password; the web app then sends Firebase's set-password email), sets its role and saves the profile.
 - `PATCH /api/admin/users/:uid` — Admin: updates display name, role (signs the user out so it applies) and profile. An admin cannot change their own role or demote the last admin.
 - `PATCH /api/admin/users/:uid/status` — Admin: `{ "disabled": true|false }`. Disabling also revokes the user's sessions. An admin cannot disable themselves or the last active admin.
+- `DELETE /api/orders/:orderId` — Customer deletes their own draft (drafts only).
+- `POST /api/orders/:orderId/cancel` — Customer cancels an order before approval (`submitted`, `assigned`, `need_information`) with an optional `reason`; status becomes `cancelled` and admins are notified.
+- `GET /api/admin/data` — Admin: order file size, counts, backups and archive files.
+- `POST /api/admin/data/backups` — Admin: take a backup now.
+- `GET /api/admin/data/backups/:name` and `GET /api/admin/data/export` — Admin: download a backup or the current data (logged in the activity log).
+- `GET /api/admin/data/activity` — Admin: activity log (accounts created/disabled/role changes, backups, downloads, archiving).
 - `GET /api/profile` — the signed-in user's shop name, phone, address and tax ID (used to prefill the delivery address).
 - `POST /api/notifications/read` — marks the feed read for the signed-in user (stored in `data/orders.json`).
 
@@ -57,7 +63,11 @@ The API uses SQL only to read the product catalog. It does not run INSERT, UPDAT
 DELETE, CREATE, ALTER, or DROP commands against the database.
 
 Orders, workflow history, customer messages, Admin assignment logs, and customer profiles (`customers`, keyed by Firebase UID) are stored
-only in data/orders.json. Back up this file before deploying or updating the app.
+only in data/orders.json.
+
+- Backups: a copy goes to `data/backups/` before a write when the last copy is over an hour old, and on demand from Settings → ข้อมูลและการสำรอง. Copies older than 30 days are pruned (the newest 10 are always kept). If orders.json is ever unreadable the API refuses to overwrite it and logs which backup to restore: stop the API and copy that file over `data/orders.json`.
+- Archive: closed orders (`completed`, `rejected`, `cancelled`) untouched for `ORDER_ARCHIVE_DAYS` (default 365; `0` turns it off) move to `data/archive/orders-<year>.json` at start-up and daily. They stay readable at `GET /api/orders/:orderId`.
+- Keep a copy of `data/` outside the server too; it holds customer details.
 
 ## Schema mapping
 
@@ -70,6 +80,6 @@ The catalog is mapped to your SQL Server tables:
 
 Only rows with both GOODS and SKU flags `ENABLE='Y'` and `P_ENABLE='Y'` are returned. Rows whose alias or SKU name includes `เลิกผลิต` are excluded. A scan can return more than one GOODS row because one SKU may be sold in several units; the UI must show those choices and require a customer confirmation before adding an item to the cart.
 
-`basePrice` maps from `GOODSMASTER.GOODS_PRICE`. Customer-specific pricing needs a separate price-table mapping before it is shown as a final sell price.
+`basePrice` maps from `GOODSMASTER.GOODS_PRICE` and is sent to admins only; customer responses (catalog, barcode, product detail, repeat order) never include a price.
 
 For SQL Server authentication, map `server`, `port`, `database`, `username`, and `password` to `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` respectively. Set `DB_ENCRYPT` and `DB_TRUST_SERVER_CERTIFICATE` to match the existing database connection configuration.

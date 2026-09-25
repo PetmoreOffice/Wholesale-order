@@ -3,6 +3,8 @@ import cors from 'cors';
 import express from 'express';
 import { connectDatabase } from './config/db.js';
 import { requireAuth } from './middleware/auth.js';
+import { archiveOldOrders } from './orders/store.js';
+import { dataRouter } from './routes/data.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
@@ -41,6 +43,7 @@ app.use('/api/products', requireAuth, productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/admin/users', usersRouter);
+app.use('/api/admin/data', dataRouter);
 app.use('/api/profile', profileRouter);
 
 // Details stay in the server log; SQL and Firebase internals never reach the browser.
@@ -51,3 +54,14 @@ app.use((error, _req, res, _next) => {
 });
 
 app.listen(port, () => console.log(`Wholesale API listening on http://localhost:${port}`));
+
+// Closed orders untouched for ORDER_ARCHIVE_DAYS (default 365, 0 turns it off) move to
+// data/archive once at start-up and then daily, keeping data/orders.json small.
+const archiveDays = Number(process.env.ORDER_ARCHIVE_DAYS ?? 365);
+if (archiveDays > 0) {
+  const archive = () => archiveOldOrders(archiveDays)
+    .then((count) => { if (count) console.log(`Archived ${count} closed orders older than ${archiveDays} days.`); })
+    .catch((error) => console.error('Order archive failed:', error));
+  archive();
+  setInterval(archive, 24 * 60 * 60 * 1000).unref();
+}

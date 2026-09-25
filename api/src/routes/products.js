@@ -5,6 +5,18 @@ import { catalogFields, productJoins, sellableOnly } from '../catalog/sql.js';
 
 export const productsRouter = Router();
 
+const MAX_TERM = 100;
+
+// Prices are not disclosed to customers; only admins see the reference price.
+function forViewer(req, rows) {
+  return req.user.role === 'admin' ? rows : rows.map(({ basePrice, ...row }) => row);
+}
+
+// A repeated query parameter arrives as an array; read only the first value.
+function textParam(value) {
+  return String((Array.isArray(value) ? value[0] : value) ?? '').trim();
+}
+
 function toPositiveInteger(value, fallback, maximum) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 1) return fallback;
@@ -44,11 +56,11 @@ productsRouter.get('/', async (req, res, next) => {
     const categoryId = req.query.categoryId ? Number.parseInt(req.query.categoryId, 10) : null;
     const departmentId = req.query.departmentId ? Number.parseInt(req.query.departmentId, 10) : null;
     // A department narrows further than a group, so the group only applies on its own.
-    const groupId = !Number.isInteger(departmentId) && typeof req.query.groupId === 'string' ? req.query.groupId : null;
+    const groupId = !Number.isInteger(departmentId) && textParam(req.query.groupId) ? textParam(req.query.groupId) : null;
     const groupDepartmentIds = groupId ? await departmentIdsForGroup(groupId) : [];
     if (groupId && !groupDepartmentIds) return res.status(400).json({ error: 'INVALID_GROUP', message: 'ไม่พบกลุ่มสินค้านี้' });
     const params = {
-      term: (req.query.q || '').trim(),
+      term: textParam(req.query.q).slice(0, MAX_TERM),
       categoryId: Number.isInteger(categoryId) ? categoryId : null,
       departmentId: Number.isInteger(departmentId) ? departmentId : null,
       limit: pageSize,
@@ -60,7 +72,7 @@ productsRouter.get('/', async (req, res, next) => {
       includeTotal ? query(`SELECT COUNT(*) AS total ${productJoins} ${catalogWhere(groupDepartmentIds)}`, params) : Promise.resolve(null)
     ]);
     const total = countRows ? Number(countRows[0]?.total || 0) : undefined;
-    res.json({ data: rows, pagination: {
+    res.json({ data: forViewer(req, rows), pagination: {
       limit: pageSize,
       offset,
       hasMore: Number.isFinite(total) ? offset + rows.length < total : rows.length === pageSize,
@@ -98,12 +110,12 @@ productsRouter.get('/barcode/:barcode', async (req, res, next) => {
        WHERE ${sellableOnly}
          AND (s.SKU_BARCODE = @barcode OR s.SKU_CODE = @barcode OR g.GOODS_CODE = @barcode)
        ORDER BY unitName, goodsId`,
-      { barcode: req.params.barcode.trim() }
+      { barcode: req.params.barcode.trim().slice(0, 64) }
     );
     if (rows.length === 0) {
       return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: 'ไม่พบสินค้าจากบาร์โค้ดนี้ กรุณาค้นหาด้วย SKU หรือชื่อสินค้า' });
     }
-    return res.json({ data: rows, requiresUnitSelection: rows.length > 1 });
+    return res.json({ data: forViewer(req, rows), requiresUnitSelection: rows.length > 1 });
   } catch (error) { return next(error); }
 });
 
@@ -117,6 +129,6 @@ productsRouter.get('/:goodsId', async (req, res, next) => {
       { goodsId }
     );
     if (!rows[0]) return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: 'ไม่พบสินค้า' });
-    return res.json({ data: rows[0] });
+    return res.json({ data: forViewer(req, rows)[0] });
   } catch (error) { next(error); }
 });

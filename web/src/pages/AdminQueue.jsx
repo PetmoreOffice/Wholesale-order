@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useMatch, useNavigate, useSearchParams } from 'react-router';
-import { RefreshCw, X } from 'lucide-react';
+import { FileDown, RefreshCw, X } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
+import { downloadFile, orderCsv } from '../lib/csv.js';
 import { count, dateTime, timeAgo } from '../lib/format.js';
 import { adminActionText, adminActions, closedStatuses, messageRequired } from '../lib/orderStatus.js';
 import { OrderMessages } from '../components/OrderMessages.jsx';
@@ -183,6 +184,7 @@ export function AdminQueue({ adminId }) {
               <div className="order-panel-status">
                 <StatusBadge status={selected.status} />
                 <span>{selected.assignedAdminName ? <>ผู้รับผิดชอบ: <b>{mine ? 'คุณ' : selected.assignedAdminName}</b></> : 'ยังไม่มีผู้รับงาน'}</span>
+                {detail && <Button type="button" size="sm" variant="outline" onClick={() => downloadFile(`${detail.orderNumber}.csv`, orderCsv(detail), 'text/csv;charset=utf-8')} title="ไฟล์ CSV สำหรับคีย์เข้า ERP (เปิดใน Excel ได้)"><FileDown aria-hidden="true" /> CSV สำหรับ ERP</Button>}
                 {claimable && <Button type="button" size="sm" variant={selected.assignedAdminName ? 'outline' : 'default'} disabled={busy || !detail} onClick={claim}>{selected.assignedAdminName ? 'รับช่วงงาน' : 'รับงานนี้'}</Button>}
               </div>
 

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { Mail, MoreHorizontal, Pencil, Power, RefreshCw, Search, ShieldCheck, Store, UserPlus, UsersRound, X } from 'lucide-react';
+import { DatabaseBackup, History, Mail, MoreHorizontal, Pencil, Power, RefreshCw, Search, ShieldCheck, Store, UserPlus, UsersRound, X } from 'lucide-react';
+import { ActivitySection } from '../components/settings/ActivitySection.jsx';
+import { DataSection } from '../components/settings/DataSection.jsx';
 import { auth } from '../firebase.js';
 import { apiFetch, apiUrl } from '../api/client.js';
 import { useSession } from '../context/session.js';
@@ -61,7 +63,7 @@ function lastActive(user) {
   return latest ? timeAgo(latest) : 'ยังไม่เคยเข้าใช้งาน';
 }
 
-export function AdminSettings() {
+function UsersSection() {
   const session = useSession();
   const [users, setUsers] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -130,13 +132,7 @@ export function AdminSettings() {
   ];
 
   return (
-    // Plain wrapper, no entrance transform (see DESIGN.md): the sheet and menus are portalled overlays.
-    <div className="page settings-page">
-      <PageHeader
-        title="ตั้งค่าผู้ใช้งาน"
-        description="ดูว่าใครกำลังใช้งาน เพิ่มบัญชีให้ลูกค้าหรือแอดมิน และปิดบัญชีที่ไม่ใช้แล้ว"
-        actions={<Button type="button" size="lg" onClick={() => setEditing({})}><UserPlus aria-hidden="true" /> เพิ่มผู้ใช้</Button>}
-      />
+    <>
 
       <dl className="settings-stats">
         {stats.map(stat => (
@@ -157,7 +153,10 @@ export function AdminSettings() {
             <h2 id="users-title">บัญชีผู้ใช้</h2>
             <p>อัปเดตสถานะอัตโนมัติทุก 30 วินาที</p>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={load}><RefreshCw aria-hidden="true" /> รีเฟรช</Button>
+          <div className="panel-head-actions">
+            <Button type="button" variant="outline" size="sm" onClick={load} aria-label="รีเฟรชรายชื่อ"><RefreshCw aria-hidden="true" /></Button>
+            <Button type="button" size="sm" onClick={() => setEditing({})}><UserPlus aria-hidden="true" /> เพิ่มผู้ใช้</Button>
+          </div>
         </header>
 
         <div className="user-toolbar">
@@ -250,6 +249,33 @@ export function AdminSettings() {
           </div>
         </Dialog>
       )}
+    </>
+  );
+}
+
+const sections = [
+  { id: 'users', label: 'ผู้ใช้งาน', icon: UsersRound, description: 'ดูว่าใครกำลังใช้งาน เพิ่มบัญชีให้ลูกค้าหรือแอดมิน และปิดบัญชีที่ไม่ใช้แล้ว' },
+  { id: 'activity', label: 'บันทึกกิจกรรม', icon: History, description: 'ใครทำอะไรกับบัญชีผู้ใช้และข้อมูลระบบ เมื่อไร' },
+  { id: 'data', label: 'ข้อมูลและการสำรอง', icon: DatabaseBackup, description: 'ไฟล์ข้อมูล Order สำรองอัตโนมัติ และดาวน์โหลดเก็บไว้นอกเครื่อง' },
+];
+
+export function AdminSettings() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const active = sections.find(section => section.id === searchParams.get('section')) || sections[0];
+  return (
+    // Plain wrapper, no entrance transform (see DESIGN.md): the sheet and menus are portalled overlays.
+    <div className="page settings-page">
+      <PageHeader title="ตั้งค่า" description={active.description} />
+      <nav className="settings-nav" aria-label="หมวดการตั้งค่า">
+        {sections.map(section => (
+          <button key={section.id} type="button" aria-current={section.id === active.id ? 'page' : undefined} onClick={() => setSearchParams({ section: section.id })}>
+            <section.icon aria-hidden="true" />{section.label}
+          </button>
+        ))}
+      </nav>
+      {active.id === 'users' && <UsersSection />}
+      {active.id === 'activity' && <ActivitySection />}
+      {active.id === 'data' && <DataSection />}
     </div>
   );
 }

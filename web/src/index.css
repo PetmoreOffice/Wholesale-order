@@ -293,6 +293,8 @@
   .catalog-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--surface-sunken); }
   .pagination-pages { display: flex; align-items: center; gap: 2px; }
   .pagination-pages > span { padding: 0 6px; color: var(--ink-3); }
+  /* Customers never see prices: the price column is left out entirely. */
+  .catalog[data-prices="hidden"] .catalog-columns, .catalog[data-prices="hidden"] .product-row { grid-template-columns: minmax(0, 1fr) 80px 128px; }
   .catalog-footnote { margin: 12px 4px 0; color: var(--ink-3); font-size: 13px; }
 
   /* Cart: the one dark surface on the page, so the draft order is always findable. */
@@ -381,6 +383,11 @@
   .detail-fields [data-slot="textarea"] { min-height: 96px; background: var(--surface); }
   .detail-sidebar { position: sticky; top: calc(var(--topbar-height) + 20px); display: grid; gap: 16px; }
   .detail-sidebar > .panel { padding: 20px; }
+  /* Low-key actions: cancelling an order must not look like the next step. */
+  .quiet-panel { padding: 20px; }
+  .quiet-panel h2 { margin: 0; font-size: 15px; }
+  .quiet-panel > p { margin: 4px 0 12px; color: var(--ink-3); font-size: 13px; }
+  .secondary-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .action-panel { border-color: var(--green-800); box-shadow: 0 0 0 1px var(--green-800), var(--shadow-sm); }
   .action-panel h2 { margin: 0; font-size: 17px; }
   .action-panel > p { margin: 6px 0 16px; color: var(--ink-3); font-size: 14px; }
@@ -532,6 +539,7 @@
   @media (max-width: 1180px) {
     .catalog-layout { grid-template-columns: minmax(0, 1fr) 300px; }
     .catalog-columns, .product-row { grid-template-columns: minmax(0, 1fr) 64px 112px 120px; }
+    .catalog[data-prices="hidden"] .catalog-columns, .catalog[data-prices="hidden"] .product-row { grid-template-columns: minmax(0, 1fr) 64px 120px; }
     .queue-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); }
   }
 
@@ -576,6 +584,7 @@
     .product-meta { display: flex; align-items: baseline; gap: 6px; }
     .product-meta:nth-of-type(2) { grid-area: moq; }
     .product-meta:nth-of-type(3) { grid-area: price; justify-self: end; }
+    .catalog[data-prices="hidden"] .product-row { grid-template-areas: "main main" "moq moq" "add add"; }
     .meta-label { display: inline; }
     .add-button { grid-area: add; justify-self: stretch; }
     .catalog-pagination { flex-wrap: wrap; justify-content: center; padding: 12px; }
@@ -624,7 +633,7 @@
   .settings-stats .panel { display: grid; gap: 2px; margin: 0; padding: 16px 20px; }
   .settings-stats dt { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 13px; font-weight: 600; }
   .settings-stats dd { margin: 0; }
-  .settings-stats dd.num { font-size: 30px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+  .settings-stats dd.num { font-size: clamp(20px, 2.2vw, 30px); font-weight: 700; line-height: 1.25; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .settings-stats .stat-hint { color: var(--ink-3); font-size: 12px; }
   .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-800); box-shadow: 0 0 0 3px var(--green-100); }
 
@@ -667,6 +676,31 @@
 
   .confirm-dialog { width: min(100%, 440px); }
 
+  /* Section switcher under the page title. */
+  .settings-nav { display: flex; gap: 4px; margin: -8px 0 20px; padding-bottom: 1px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .settings-nav button { display: inline-flex; align-items: center; gap: 8px; flex: none; min-height: 42px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -2px; background: none; color: var(--ink-3); font: inherit; font-size: 14px; font-weight: 600; transition: color .15s ease, border-color .15s ease; }
+  .settings-nav button:hover { color: var(--ink); }
+  .settings-nav button[aria-current="page"] { border-bottom-color: var(--green-800); color: var(--green-900); }
+  .settings-nav svg { width: 16px; height: 16px; }
+  .panel-head-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .settings-section-gap { margin-top: 16px; }
+  .settings-inline-error { margin: 0 20px 14px; }
+  .settings-empty-line { margin: 0; padding: 16px 20px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 14px; }
+  .user-panel-foot code { padding: 1px 5px; border-radius: 5px; background: var(--muted-ui); font-family: var(--font-mono); font-size: 12px; }
+
+  .activity-list, .file-list { margin: 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+  .activity-list li, .file-list li { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+  .activity-list li:last-child, .file-list li:last-child { border-bottom: 0; }
+  .activity-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--tone-bg); color: var(--tone-fg); }
+  .activity-icon svg { width: 15px; height: 15px; }
+  .activity-text, .file-text { display: grid; flex: 1; min-width: 0; }
+  .activity-text p { margin: 0; font-size: 14px; }
+  .activity-text b { font-weight: 600; }
+  .activity-text small, .file-text small { overflow: hidden; color: var(--ink-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .activity-time { flex: none; color: var(--ink-3); font-size: 13px; }
+  .file-icon { width: 18px; height: 18px; flex: none; color: var(--green-800); }
+  .file-text b { font-size: 14px; font-weight: 600; }
+
   /* Side sheet (shadcn Sheet): the form keeps the list in view and has room to breathe. */
   .sheet-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(5, 34, 27, .45); animation: fade-in .15s ease-out; }
   .sheet { position: fixed; inset: 0 0 0 auto; z-index: 51; display: flex; width: min(100%, 520px); background: var(--surface); box-shadow: var(--shadow-lg); animation: sheet-enter .22s cubic-bezier(.22, 1, .36, 1); }
@@ -708,6 +742,9 @@
 
   @media (max-width: 760px) {
     .user-row { padding-inline: 16px; }
+    .user-panel-head { flex-wrap: wrap; }
+    .activity-list li, .file-list li { padding-inline: 16px; align-items: flex-start; }
+    .activity-time { font-size: 12px; }
     .settings-stats { grid-template-columns: 1fr 1fr; }
     .settings-stats .panel:first-child { grid-column: 1 / -1; }
     .settings-stats dd.num { font-size: 26px; }

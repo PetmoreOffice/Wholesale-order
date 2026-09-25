@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeCheck, CircleCheckBig, CircleX, ClipboardList, FilePen, Inbox, MessageCircleQuestion, Package, Truck, UserCheck } from 'lucide-react';
+import { Ban, BadgeCheck, CircleCheckBig, CircleX, ClipboardList, FilePen, Inbox, MessageCircleQuestion, Package, Truck, UserCheck } from 'lucide-react';
 import { statusText, statusTone } from '../lib/orderStatus.js';
 
 const statusIcon = {
@@ -12,7 +12,8 @@ const statusIcon = {
   preparing: Package,
   shipped: Truck,
   completed: CircleCheckBig,
-  rejected: CircleX
+  rejected: CircleX,
+  cancelled: Ban
 };
 
 // DESIGN.md: status is never color alone — tone, icon and label always travel together.
