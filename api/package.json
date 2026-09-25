@@ -1,0 +1,19 @@
+{
+  "name": "wholesale-order-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "role:set": "node scripts/set-firebase-role.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^14.3.0",
+    "mssql": "^11.0.1",
+    "mysql2": "^3.12.0"
+  }
+}
