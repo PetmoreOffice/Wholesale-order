@@ -10,7 +10,9 @@ export function assertReadOnly(statement) {
     .trim()
     .toUpperCase();
   const tokens = normalized.replace(/N?'(?:''|[^'])*'/g, "''");
-  if (!/^SELECT\b/.test(tokens) || /;|--|\/\*|\*\//.test(tokens) || /\b(INTO|INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|EXEC|EXECUTE|GRANT|REVOKE|DENY|BACKUP|RESTORE|OPENROWSET|OPENQUERY|OPENDATASOURCE|NEXT\s+VALUE)\b/.test(tokens)) {
+  // T-SQL runs several statements in one batch even without ";", so anything that is not
+  // plain reading is refused by keyword too (WAITFOR, DBCC, KILL, DISABLE TRIGGER, …).
+  if (!/^SELECT\b/.test(tokens) || /;|--|\/\*|\*\//.test(tokens) || /\b(INTO|INSERT|UPDATE|UPDATETEXT|WRITETEXT|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|EXEC|EXECUTE|SP_EXECUTESQL|GRANT|REVOKE|DENY|BACKUP|RESTORE|BULK|OPENROWSET|OPENQUERY|OPENDATASOURCE|OPENXML|NEXT\s+VALUE|WAITFOR|DBCC|KILL|SHUTDOWN|RECONFIGURE|CHECKPOINT|SETUSER|REVERT|DISABLE|ENABLE|USE|SET|DECLARE|BEGIN|COMMIT|ROLLBACK|RECEIVE|SEND)\b/.test(tokens)) {
     throw new Error('Database is read-only. Only SELECT statements are allowed by this API.');
   }
 }
