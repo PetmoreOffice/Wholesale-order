@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { Popover } from 'radix-ui';
 import { ChevronDown, ChevronRight, ListTree, X } from 'lucide-react';
 import { count } from '../../lib/format.js';
 import { Dialog, DialogClose, DialogTitle } from '@/components/ui/dialog';
@@ -17,86 +18,124 @@ export function categoryPath(groups, value) {
   return [group?.name, department?.name, sub?.name].filter(Boolean);
 }
 
-// Long levels (อุปกรณ์และของใช้ has 27 departments) show the first few plus the current pick.
-const COLLAPSED_LIMIT = 8;
-
-// scope: the parent the list belongs to, so "show all" folds up again on a new group or department.
-function useCollapsible(items, selectedId, scope) {
-  const [expandedScope, setExpandedScope] = useState(null);
-  useEffect(() => { setExpandedScope(null); }, [scope]);
-  const showAll = expandedScope === scope;
-  if (showAll || items.length <= COLLAPSED_LIMIT + 1) return { visible: items, hidden: 0, toggle: showAll ? () => setExpandedScope(null) : null };
-  const visible = items.slice(0, COLLAPSED_LIMIT);
-  const selected = items.find(item => item.id === selectedId);
-  if (selected && !visible.includes(selected)) visible.push(selected);
-  return { visible, hidden: items.length - visible.length, toggle: () => setExpandedScope(scope) };
-}
-
-function MoreButton({ hidden, toggle }) {
-  if (!toggle) return null;
-  return <button type="button" className="category-more" onClick={toggle}>{hidden ? `แสดงเพิ่ม ${hidden} หมวด` : 'แสดงน้อยลง'}</button>;
-}
-
-function Chip({ selected, onClick, children, products }) {
-  return (
-    <button type="button" className="category-chip" aria-pressed={selected} onClick={onClick}>
-      <span>{children}</span>
-      {products !== undefined && <span className="chip-count num">{count.format(products)}</span>}
-    </button>
-  );
-}
+const isPhone = () => window.matchMedia('(max-width: 760px)').matches;
+// A department column lists this many sub-departments before "อีก n หมวด".
+const SUB_PREVIEW = 6;
 
 /**
- * Shelf navigation: a short row of groups (สุนัข, แมว, …) always visible; the chosen group's
- * departments, then the chosen department's sub-departments, open beneath it. On phones the
- * lower levels move into a picker sheet so nothing needs sideways scrolling.
+ * Shelf navigation (shadcn NavigationMenu pattern, opened by click so it works on touch):
+ * one row of groups; choosing a group filters to it and opens a panel with every department
+ * as a column and its sub-departments beneath. The chosen path then shows as a breadcrumb.
+ * Phones get the same tree in a picker sheet instead of the panel.
  */
 export function CategoryNav({ groups, value, onChange }) {
+  const [openGroup, setOpenGroup] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { group, department, sub } = findCategory(groups, value);
-  const total = groups.reduce((sum, item) => sum + item.products, 0);
-  const pick = (next) => { onChange(next); setPickerOpen(false); };
-  const departments = useCollapsible(group?.departments || [], department?.id, group?.id);
-  const subs = useCollapsible(department?.children || [], sub?.id, department?.id);
+  const panelGroup = groups.find(item => item.id === openGroup);
+
+  function chooseGroup(item) {
+    if (group?.id !== item.id || department) onChange({ g: item.id });
+    if (!isPhone()) setOpenGroup(current => current === item.id ? null : item.id);
+  }
+  function choose(next) {
+    onChange(next);
+    setOpenGroup(null);
+    setPickerOpen(false);
+  }
 
   return (
     <div className="category-nav">
-      <div className="category-groups" role="group" aria-label="กลุ่มสินค้า">
-        <button type="button" aria-pressed={!group} onClick={() => onChange({})} title={`${count.format(total)} รายการ`}>ทั้งหมด</button>
-        {groups.map(item => (
-          <button type="button" key={item.id} aria-pressed={group?.id === item.id} onClick={() => onChange({ g: item.id })} title={`${count.format(item.products)} รายการ`}>{item.name}</button>
-        ))}
-      </div>
+      <Popover.Root open={Boolean(panelGroup)} onOpenChange={open => { if (!open) setOpenGroup(null); }}>
+        <Popover.Anchor asChild>
+          <div className="category-groups" role="group" aria-label="กลุ่มสินค้า">
+            <button type="button" aria-pressed={!group} onClick={() => choose({})}>ทั้งหมด</button>
+            {groups.map(item => (
+              <button key={item.id} type="button" aria-pressed={group?.id === item.id} aria-expanded={openGroup === item.id} aria-haspopup="true" onClick={() => chooseGroup(item)}>
+                {item.name}
+                <ChevronDown aria-hidden="true" className="group-chevron" />
+              </button>
+            ))}
+          </div>
+        </Popover.Anchor>
+        <Popover.Portal>
+          <Popover.Content className="category-panel" align="start" sideOffset={6} collisionPadding={16} aria-label={panelGroup ? `หมวดใน${panelGroup.name}` : undefined}
+            onInteractOutside={event => { if (event.target.closest?.('.category-groups')) event.preventDefault(); }}>
+            {panelGroup && <CategoryPanel key={panelGroup.id} group={panelGroup} value={value} onPick={choose} />}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
 
       {group && (
-        <div className="category-level" role="group" aria-label={`หมวดใน${group.name}`}>
-          <Chip selected={!department} onClick={() => onChange({ g: group.id })}>ทุกหมวดใน{group.name}</Chip>
-          {departments.visible.map(item => (
-            <Chip key={item.id} selected={department?.id === item.id} products={item.products} onClick={() => onChange({ g: group.id, d: String(item.id) })}>{item.name}</Chip>
-          ))}
-          <MoreButton {...departments} />
-        </div>
+        <nav className="category-trail" aria-label="หมวดที่เลือก">
+          <ol>
+            <li><button type="button" onClick={() => choose({ g: group.id })} aria-current={!department ? 'page' : undefined}>{group.name}</button></li>
+            {department && <li><ChevronRight aria-hidden="true" /><button type="button" onClick={() => choose({ g: group.id, d: String(department.id) })} aria-current={!sub ? 'page' : undefined}>{department.name}</button></li>}
+            {sub && <li><ChevronRight aria-hidden="true" /><span aria-current="page">{sub.name}</span></li>}
+          </ol>
+          <button type="button" className="trail-change" onClick={() => (isPhone() ? setPickerOpen(true) : setOpenGroup(group.id))}>เปลี่ยนหมวด</button>
+          <button type="button" className="icon-button" aria-label="ล้างหมวดหมู่" title="ล้างหมวดหมู่" onClick={() => choose({})}><X aria-hidden="true" /></button>
+        </nav>
       )}
 
-      {department?.children.length > 0 && (
-        <div className="category-level sub" role="group" aria-label={`หมวดย่อยของ${department.name}`}>
-          <span className="category-level-label">{department.name}</span>
-          <Chip selected={!sub} onClick={() => onChange({ g: group.id, d: String(department.id) })}>ทั้งหมด</Chip>
-          {subs.visible.map(item => (
-            <Chip key={item.id} selected={sub?.id === item.id} products={item.products} onClick={() => onChange({ g: group.id, d: String(department.id), s: String(item.id) })}>{item.name}</Chip>
-          ))}
-          <MoreButton {...subs} />
-        </div>
+      {!group && (
+        <button type="button" className="category-picker-button" onClick={() => setPickerOpen(true)}>
+          <ListTree aria-hidden="true" />
+          <span>เลือกหมวดหมู่</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
       )}
 
-      <button type="button" className="category-picker-button" onClick={() => setPickerOpen(true)}>
-        <ListTree aria-hidden="true" />
-        <span>{department ? [department.name, sub?.name].filter(Boolean).join(' › ') : group ? `ทุกหมวดใน${group.name}` : 'เลือกหมวดหมู่'}</span>
-        <ChevronDown aria-hidden="true" />
-      </button>
-
-      {pickerOpen && <CategoryPicker groups={group ? [group] : groups} value={value} onPick={pick} onClose={() => setPickerOpen(false)} />}
+      {pickerOpen && <CategoryPicker groups={group ? [group] : groups} value={value} onPick={choose} onClose={() => setPickerOpen(false)} />}
     </div>
+  );
+}
+
+function CategoryPanel({ group, value, onPick }) {
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggle = (id) => setExpanded(current => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  return (
+    <>
+      <div className="category-panel-head">
+        <button type="button" className="panel-all" aria-pressed={value.g === group.id && !value.d} onClick={() => onPick({ g: group.id })}>
+          ดูทุกหมวดใน{group.name} <span className="num">{count.format(group.products)}</span>
+        </button>
+        <span className="panel-hint"><span className="num">{count.format(group.departments.length)}</span> หมวด</span>
+      </div>
+      <div className="category-columns">
+        {group.departments.map((department, index) => {
+          const id = String(department.id);
+          const showAll = expanded.has(id);
+          const children = showAll ? department.children : department.children.slice(0, SUB_PREVIEW);
+          const more = department.children.length - SUB_PREVIEW;
+          return (
+            <section key={id} className="category-column" style={{ '--stagger': `${Math.min(index, 12) * 18}ms` }}>
+              <button type="button" className="column-title" aria-pressed={value.d === id && !value.s} onClick={() => onPick({ g: group.id, d: id })}>
+                <span>{department.name}</span><span className="num">{count.format(department.products)}</span>
+              </button>
+              {department.children.length > 0 && (
+                <ul>
+                  {children.map(child => (
+                    <li key={child.id}>
+                      <button type="button" aria-pressed={value.s === String(child.id)} onClick={() => onPick({ g: group.id, d: id, s: String(child.id) })}>
+                        <span>{child.name}</span><span className="num">{count.format(child.products)}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {more > 0 && (
+                    <li><button type="button" className="column-more" onClick={() => toggle(id)}>{showAll ? 'แสดงน้อยลง' : `อีก ${more} หมวด`}</button></li>
+                  )}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

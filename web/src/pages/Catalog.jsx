@@ -5,7 +5,7 @@ import { apiFetch, apiUrl } from '../api/client.js';
 import { readCart, writeCart } from '../lib/cart.js';
 import { count } from '../lib/format.js';
 import { Cart } from '../components/catalog/Cart.jsx';
-import { CategoryNav, categoryPath } from '../components/catalog/CategoryNav.jsx';
+import { CategoryNav } from '../components/catalog/CategoryNav.jsx';
 import { OrderReview } from '../components/catalog/OrderReview.jsx';
 import { ProductRow, ProductRowSkeleton } from '../components/catalog/ProductRow.jsx';
 import { Scanner } from '../components/catalog/Scanner.jsx';
@@ -154,7 +154,6 @@ export function Catalog({ session }) {
   }
 
   const inCart = new Map(cart.map(item => [item.goodsId, item.quantity]));
-  const shelfPath = categoryPath(groups, category);
 
   return (
     <>
@@ -185,7 +184,7 @@ export function Catalog({ session }) {
           <section ref={listRef} className="panel catalog" aria-live="polite" aria-busy={loading}>
             <div className="catalog-head">
               <span>
-                {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{shelfPath.length > 0 && <> ใน {shelfPath.join(' › ')}</>}{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
+                {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
               </span>
               {submittedQuery && <button type="button" className="link-button" onClick={clearSearch}>ล้างการค้นหา</button>}
             </div>
