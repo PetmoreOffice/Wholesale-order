@@ -39,6 +39,10 @@ The user must sign out and sign in again after a role change.
 - `GET /api/orders/admin/queue?status=...` — Admin-only order queue.
 - `POST /api/orders/:orderId/status` — Admin status transition with timeline history.
 - POST /api/orders/:orderId/assign — records the Admin who accepts or takes over an order in the local JSON order store.
+- `POST /api/orders/:orderId/reply` — Customer answers a need-information request; the order returns to the Admin queue.
+- `GET /api/orders/:orderId/reorder-items` — Customer repeat order. Read-only: re-reads each line from the catalog with SELECT and returns cart-ready items plus any unavailable or quantity-adjusted lines. Nothing is written.
+- `GET /api/notifications` — in-app feed derived from order history (Customers: Admin actions on their orders; Admins: new submissions and customer replies) with an unread count.
+- `POST /api/notifications/read` — marks the feed read for the signed-in user (stored in `data/orders.json`).
 
 ## Database safety
 

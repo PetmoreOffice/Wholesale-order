@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
-import { Boxes, ClipboardList, Inbox, LogOut, Package, PanelLeft } from 'lucide-react';
+import { Boxes, ClipboardList, House, Inbox, LogOut, Package, PanelLeft } from 'lucide-react';
 import { auth } from '../../firebase.js';
+import { NotificationBell } from '../NotificationBell.jsx';
 
 export function BrandMark() {
   return <span className="brand-mark" aria-hidden="true"><Boxes /></span>;
@@ -14,6 +15,7 @@ export function AppShell({ session, children }) {
   const navigate = useNavigate();
   const closeOnPhone = () => setNavigationOpen(false);
   const links = [
+    ...(session.role === 'customer' ? [{ to: '/home', label: 'หน้าหลัก', icon: House }] : []),
     { to: '/catalog', label: 'สินค้า', icon: Package },
     ...(session.role === 'customer' ? [{ to: '/orders', label: 'คำสั่งซื้อของฉัน', icon: ClipboardList }] : []),
     ...(session.role === 'admin' ? [{ to: '/admin', label: 'คิวงานคำสั่งซื้อ', icon: Inbox }] : []),
@@ -46,6 +48,7 @@ export function AppShell({ session, children }) {
             <PanelLeft aria-hidden="true" />
           </button>
           <div className="account">
+            <NotificationBell role={session.role} />
             <span className="avatar" aria-hidden="true">{session.name.slice(0, 1)}</span>
             <span className="account-name">
               <b>{session.name}</b>

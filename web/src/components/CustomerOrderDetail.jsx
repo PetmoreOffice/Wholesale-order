@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
+import { useSession } from '../context/session.js';
+import { reorderIntoCart } from '../lib/cart.js';
 import { count, dateTime } from '../lib/format.js';
 import { customerNextStep } from '../lib/orderStatus.js';
 import { OrderMessages } from './OrderMessages.jsx';
@@ -17,6 +20,8 @@ export function CustomerOrderDetail({ initialOrder, onChanged, onClose }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [reply, setReply] = useState('');
+  const session = useSession();
+  const navigate = useNavigate();
   const draft = order.status === 'draft';
   const next = customerNextStep[order.status];
 
@@ -61,6 +66,14 @@ export function CustomerOrderDetail({ initialOrder, onChanged, onClose }) {
     } catch (err) { setError(err.message || 'ส่งข้อมูลไม่สำเร็จ'); } finally { setBusy(false); }
   }
 
+  async function reorder() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const summary = await reorderIntoCart(session.uid, order.orderId);
+      navigate('/catalog', { state: { notice: summary } });
+    } catch (err) { setError(err.message); setBusy(false); }
+  }
+
   function setQuantity(goodsId, quantity) {
     setOrder(value => ({ ...value, items: value.items.map(row => row.goodsId === goodsId ? { ...row, quantity } : row) }));
   }
@@ -69,8 +82,11 @@ export function CustomerOrderDetail({ initialOrder, onChanged, onClose }) {
     <section className="order-detail" aria-label="รายละเอียดคำสั่งซื้อ">
       <button type="button" className="back-link" onClick={onClose} disabled={busy}><ArrowLeft aria-hidden="true" /> คำสั่งซื้อของฉัน</button>
       <header className="detail-header">
-        <div className="detail-title-row"><h1 className="num">{order.orderNumber}</h1><StatusBadge status={order.status} /></div>
-        <p>สร้างเมื่อ {dateTime(order.createdAt)} · อัปเดตล่าสุด {dateTime(order.updatedAt)}</p>
+        <div>
+          <div className="detail-title-row"><h1 className="num">{order.orderNumber}</h1><StatusBadge status={order.status} /></div>
+          <p>สร้างเมื่อ {dateTime(order.createdAt)} · อัปเดตล่าสุด {dateTime(order.updatedAt)}</p>
+        </div>
+        {!draft && <Button type="button" variant={order.status === 'completed' || order.status === 'rejected' ? 'default' : 'outline'} disabled={busy} onClick={reorder}><RotateCcw aria-hidden="true" /> สั่งซ้ำ</Button>}
       </header>
 
       {next && (

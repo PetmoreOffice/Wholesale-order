@@ -3,7 +3,7 @@ import { firebaseAuth } from '../config/firebase.js';
 import { Router } from 'express';
 import { query } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { orderItemFields, orderItemJoins, sellableOnly } from '../catalog/sql.js';
+import { catalogFields, orderItemFields, orderItemJoins, productJoins, sellableOnly } from '../catalog/sql.js';
 import { addHistory, changeStore, findOrder, orderSummary, readStore } from '../orders/store.js';
 
 export const ordersRouter = Router();
@@ -229,6 +229,34 @@ ordersRouter.post('/:orderId/reply', requireRole('customer'), async (req, res, n
       return customerView(order);
     });
     return res.json({ data: result });
+  } catch (error) { return handleOrderError(res, next, error); }
+});
+
+// Repeat order: read-only. Looks up each line in the live catalog (SELECT only) and returns
+// cart-ready products; nothing is written to SQL or to the order store.
+ordersRouter.get('/:orderId/reorder-items', requireRole('customer'), async (req, res, next) => {
+  try {
+    const orderId = parseOrderId(req.params.orderId);
+    const order = ownOrder(await readStore(), orderId, req.user);
+    if (order.status === 'draft') throw orderError('INVALID_STATUS', 'ร่างคำสั่งซื้อแก้ไขได้โดยตรง ไม่ต้องสั่งซ้ำ');
+    const items = [];
+    const unavailable = [];
+    const adjusted = [];
+    for (const line of order.items) {
+      const rows = await query(`SELECT ${catalogFields} ${productJoins} WHERE ${sellableOnly} AND g.GOODS_KEY = @goodsId`, { goodsId: line.goodsId });
+      const product = rows[0];
+      if (!product) {
+        unavailable.push({ goodsId: line.goodsId, name: line.name });
+        continue;
+      }
+      const minimum = Number(product.minimumOrder) || 1;
+      const maximum = Number(product.maximumOrder) || 0;
+      let quantity = Math.max(minimum, Number.parseInt(line.quantity, 10) || minimum);
+      if (maximum > 0) quantity = Math.min(maximum, quantity);
+      if (quantity !== Number(line.quantity)) adjusted.push({ goodsId: line.goodsId, name: product.name, from: Number(line.quantity), to: quantity });
+      items.push({ ...product, quantity });
+    }
+    return res.json({ data: { orderId, orderNumber: order.orderNumber, items, unavailable, adjusted } });
   } catch (error) { return handleOrderError(res, next, error); }
 });
 

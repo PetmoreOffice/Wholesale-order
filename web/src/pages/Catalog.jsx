@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { ScanBarcode, Search, X } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
+import { readCart, writeCart } from '../lib/cart.js';
 import { count } from '../lib/format.js';
 import { Cart } from '../components/catalog/Cart.jsx';
 import { OrderReview } from '../components/catalog/OrderReview.jsx';
@@ -28,7 +30,8 @@ function visiblePages(currentPage, totalPages) {
 }
 
 export function Catalog({ session }) {
-  const cartKey = `wholesale-cart:${session.uid}`;
+  const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [retry, setRetry] = useState(0);
@@ -44,14 +47,17 @@ export function Catalog({ session }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [cart, setCart] = useState(() => {
-    try { const saved = JSON.parse(localStorage.getItem(cartKey)); return Array.isArray(saved) ? saved : []; } catch { return []; }
-  });
+  const [cart, setCart] = useState(() => readCart(session.uid));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [scanner, setScanner] = useState(false);
   const [review, setReview] = useState(false);
-  const [scanNotice, setScanNotice] = useState('');
+  // A repeat order from another page arrives with a summary to show once.
+  const [scanNotice, setScanNotice] = useState(location.state?.notice || '');
+
+  useEffect(() => {
+    if (location.state?.notice) navigate(location.pathname, { replace: true, state: null });
+  }, []);
 
   useEffect(() => {
     apiFetch(`${apiUrl}/products/departments`)
@@ -84,8 +90,8 @@ export function Catalog({ session }) {
   }, [submittedQuery, department, retry, page]);
 
   useEffect(() => {
-    try { localStorage.setItem(cartKey, JSON.stringify(cart)); } catch { /* storage full or blocked: cart still works in memory */ }
-  }, [cart, cartKey]);
+    writeCart(session.uid, cart);
+  }, [cart, session.uid]);
 
   function add(product) {
     setCart(current => {

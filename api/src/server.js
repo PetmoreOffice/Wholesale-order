@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { connectDatabase } from './config/db.js';
 import { requireAuth } from './middleware/auth.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
 
@@ -37,6 +38,7 @@ app.get('/api/health', async (_req, res, next) => {
 
 app.use('/api/products', requireAuth, productsRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Details stay in the server log; SQL and Firebase internals never reach the browser.
 app.use((error, _req, res, _next) => {

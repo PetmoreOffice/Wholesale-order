@@ -34,9 +34,14 @@ export async function readStore() {
   try {
     const content = await fs.readFile(dataFile, 'utf8');
     const store = JSON.parse(content);
-    return { nextOrderId: Number(store.nextOrderId || 1), orders: Array.isArray(store.orders) ? store.orders : [] };
+    return {
+      nextOrderId: Number(store.nextOrderId || 1),
+      orders: Array.isArray(store.orders) ? store.orders : [],
+      // uid -> ISO time the user last opened their notifications.
+      notificationReads: store.notificationReads && typeof store.notificationReads === 'object' ? store.notificationReads : {}
+    };
   } catch (error) {
-    if (error.code === 'ENOENT') return { nextOrderId: 1, orders: [] };
+    if (error.code === 'ENOENT') return { nextOrderId: 1, orders: [], notificationReads: {} };
     throw new Error('ไม่สามารถอ่านไฟล์ Order ได้: ' + error.message);
   }
 }

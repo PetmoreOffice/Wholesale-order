@@ -3,8 +3,10 @@ import { Navigate, Route, Routes } from 'react-router';
 import { onIdTokenChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from './firebase.js';
 import { AppShell } from './components/layout/AppShell.jsx';
+import { SessionContext } from './context/session.js';
 import { AdminQueue } from './pages/AdminQueue.jsx';
 import { Catalog } from './pages/Catalog.jsx';
+import { CustomerHome } from './pages/CustomerHome.jsx';
 import { CustomerOrderPage } from './pages/CustomerOrderPage.jsx';
 import { CustomerOrders } from './pages/CustomerOrders.jsx';
 import { Login } from './pages/Login.jsx';
@@ -50,18 +52,21 @@ export function App() {
   }
   if (!session) return <Login />;
 
-  const home = session.role === 'admin' ? '/admin' : '/catalog';
+  const home = session.role === 'admin' ? '/admin' : '/home';
   return (
-    <AppShell key={session.uid} session={session}>
-      <Routes>
-        <Route path="/" element={<Navigate to={home} replace />} />
-        <Route path="/catalog" element={<Catalog session={session} />} />
-        {session.role === 'customer' && <Route path="/orders" element={<CustomerOrders />} />}
-        {session.role === 'customer' && <Route path="/orders/:orderId" element={<CustomerOrderPage />} />}
-        {/* One route for the queue and its detail so selecting an order does not remount the queue. */}
-        {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminId={session.uid} />} />}
-        <Route path="*" element={<Navigate to={home} replace />} />
-      </Routes>
-    </AppShell>
+    <SessionContext.Provider value={session}>
+      <AppShell key={session.uid} session={session}>
+        <Routes>
+          <Route path="/" element={<Navigate to={home} replace />} />
+          <Route path="/catalog" element={<Catalog session={session} />} />
+          {session.role === 'customer' && <Route path="/home" element={<CustomerHome />} />}
+          {session.role === 'customer' && <Route path="/orders" element={<CustomerOrders />} />}
+          {session.role === 'customer' && <Route path="/orders/:orderId" element={<CustomerOrderPage />} />}
+          {/* One route for the queue and its detail so selecting an order does not remount the queue. */}
+          {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminId={session.uid} />} />}
+          <Route path="*" element={<Navigate to={home} replace />} />
+        </Routes>
+      </AppShell>
+    </SessionContext.Provider>
   );
 }
