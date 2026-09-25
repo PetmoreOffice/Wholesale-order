@@ -27,7 +27,7 @@ export function Cart({ items, onChange, onReview }) {
               <div className="quantity">
                 <Button type="button" variant="outline" size="icon-xs" onClick={() => onChange(item.goodsId, Math.max(item.minimumOrder, item.quantity - 1))} aria-label={`ลดจำนวน ${item.name}`}>−</Button>
                 <span>{item.quantity}</span>
-                <Button type="button" variant="outline" size="icon-xs" onClick={() => onChange(item.goodsId, item.quantity + 1)} aria-label={`เพิ่มจำนวน ${item.name}`}>+</Button>
+                <Button type="button" variant="outline" size="icon-xs" disabled={Number(item.maximumOrder) > 0 && item.quantity >= Number(item.maximumOrder)} onClick={() => onChange(item.goodsId, item.quantity + 1)} aria-label={`เพิ่มจำนวน ${item.name}`}>+</Button>
               </div>
             </li>
           ))}

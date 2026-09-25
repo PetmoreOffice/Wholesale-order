@@ -137,3 +137,12 @@ button:focus-visible, summary:focus-visible { outline: 3px solid #b17a13; outlin
 .detail-action-card .primary:hover:not(:disabled) { background: #cae892; }
 @media (max-width: 1000px) { .detail-layout { grid-template-columns: 1fr; } .detail-sidebar { position: static; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (max-width: 640px) { .app-shell.navigation-open .sidebar { display: flex; position: fixed; inset: 0 auto 0 0; z-index: 20; width: min(82vw, 280px); padding: 28px 18px; box-shadow: 20px 0 50px rgba(5, 34, 27, .28); } .app-shell.navigation-open .sidebar .brand { font-size: 16px; text-align: left; } .app-shell.navigation-open .sidebar .brand span { font-size: 25px; } .app-shell.navigation-open .sidebar .nav-group button { font-size: 14px; text-align: left; } .app-shell.navigation-open .sidebar .nav-group button::first-letter { font-size: inherit; } .app-shell.navigation-open .sidebar .nav-foot { display: block; } .app-shell.navigation-open .nav-scrim { display: block; position: fixed; inset: 0; z-index: 19; border: 0; background: rgba(5, 34, 27, .36); } .detail-header { align-items: flex-start; flex-direction: column; margin-bottom: 20px; } .detail-header .secondary { width: 100%; } .detail-card-heading, .draft-items, .detail-fields { padding-inline: 18px; } .draft-item { align-items: flex-start; flex-direction: column; gap: 10px; } .item-editor { width: 100%; grid-template-columns: auto 74px 1fr; } .detail-fields, .detail-sidebar { grid-template-columns: 1fr; } .detail-status-card { padding-inline: 18px; } }
+.order-messages { display: grid; gap: 8px; margin-top: 18px; }
+.order-messages b { font-size: 13px; }
+.order-messages ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.order-messages li { border-radius: 8px; padding: 10px 12px; background: #f1f5f2; border: 1px solid #dbe6df; }
+.order-messages li.from-admin { background: #fff5df; border-color: #e9bf63; }
+.order-messages small { color: #65766d; }
+.order-messages p { margin: 4px 0 0; color: #173127; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply-form { display: grid; gap: 8px; margin-top: 14px; }
+.reply-form textarea { background: #fff; color: #10241d; }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch, apiUrl } from '../api/client.js';
-import { adminActions, statusText } from '../lib/orderStatus.js';
+import { adminActions, messageRequired, statusText } from '../lib/orderStatus.js';
+import { OrderMessages } from '../components/OrderMessages.jsx';
 import { OrderProgress } from '../components/OrderProgress.jsx';
 import { AnimatedContent } from '../components/react-bits/AnimatedContent.jsx';
 import { Badge } from '@/components/ui/badge';
@@ -54,11 +55,10 @@ export function AdminQueue({ adminName, adminId }) {
       const response = await apiFetch(`${apiUrl}/orders/${selected.orderId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminName })
+        body: JSON.stringify({})
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
-      localStorage.setItem('wholesale-admin-name', adminName);
       setSelected(current => ({ ...current, assignedAdminName: data.data.assignedAdminName, status: data.data.status }));
       await choose({ ...selected, assignedAdminName: data.data.assignedAdminName, status: data.data.status });
       await load();
@@ -74,8 +74,8 @@ export function AdminQueue({ adminName, adminId }) {
       setError('กรุณารับ Order ก่อนดำเนินการ');
       return;
     }
-    if (status === 'need_information' && !message.trim()) {
-      setError('ระบุข้อมูลที่ต้องการจากลูกค้าก่อน');
+    if (messageRequired.includes(status) && !message.trim()) {
+      setError(status === 'rejected' ? 'ระบุเหตุผลที่ปฏิเสธและแนวทางให้ลูกค้าก่อน' : 'ระบุข้อมูลที่ต้องการจากลูกค้าก่อน');
       return;
     }
     setBusy(true); setError('');
@@ -83,7 +83,7 @@ export function AdminQueue({ adminName, adminId }) {
       const response = await apiFetch(`${apiUrl}/orders/${selected.orderId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, actorName: selected.assignedAdminName, message })
+        body: JSON.stringify({ status, message })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
@@ -132,9 +132,10 @@ export function AdminQueue({ adminName, adminId }) {
                   <div key={item.itemId}>{item.name}<span>{item.quantity} {item.unitName}</span></div>
                 ))}
               </div>
+              <OrderMessages messages={detail?.messages} />
               {adminActions[selected.status]?.length ? (
                 <>
-                  <label htmlFor="admin-message">ข้อความถึงลูกค้า {selected.status === 'submitted' ? '(จำเป็นเมื่อขอข้อมูลเพิ่ม)' : ''}</label>
+                  <label htmlFor="admin-message">ข้อความถึงลูกค้า {adminActions[selected.status].some(status => messageRequired.includes(status)) ? '(จำเป็นเมื่อขอข้อมูลเพิ่มหรือปฏิเสธ)' : ''}</label>
                   <textarea id="admin-message" value={message} onChange={e => setMessage(e.target.value)} placeholder="อธิบายการดำเนินการหรือข้อมูลที่ต้องการ" rows="3" />
                   <div className="admin-actions">
                       {adminActions[selected.status].map(status => (

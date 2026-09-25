@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { onIdTokenChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from './firebase.js';
 import { AppShell } from './components/layout/AppShell.jsx';
@@ -11,6 +11,7 @@ export function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState('catalog');
+  const identityRef = useRef('');
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -19,6 +20,7 @@ export function App() {
     }
     return onIdTokenChanged(auth, async (user) => {
       if (!user) {
+        identityRef.current = '';
         setSession(null);
         setAuthLoading(false);
         return;
@@ -26,7 +28,12 @@ export function App() {
       const token = await user.getIdTokenResult();
       const role = token.claims.role === 'admin' ? 'admin' : 'customer';
       setSession({ uid: user.uid, name: user.displayName || user.email, email: user.email, role });
-      setView(role === 'admin' ? 'admin' : 'catalog');
+      // Firebase refreshes the token hourly; only pick a start page when the account or role changes.
+      const identity = `${user.uid}:${role}`;
+      if (identityRef.current !== identity) {
+        identityRef.current = identity;
+        setView(role === 'admin' ? 'admin' : 'catalog');
+      }
       setAuthLoading(false);
     });
   }, []);

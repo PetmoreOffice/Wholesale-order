@@ -13,10 +13,13 @@ export const statusText = {
 
 export const adminActions = {
   submitted: [],
+  assigned: ['need_information', 'approved', 'rejected'],
   need_information: ['approved', 'rejected'],
-  assigned: ['approved', 'rejected'],
   approved: ['erp_entry'],
   erp_entry: ['completed'],
   preparing: ['shipped'],
   shipped: ['completed']
 };
+
+// Must match the API: these moves always carry a message the customer can read.
+export const messageRequired = ['need_information', 'rejected'];

@@ -28,11 +28,10 @@ export function CustomerOrders({ accountName }) {
     setLoading(true);
     setError('');
     try {
-      const response = await apiFetch(`${apiUrl}/orders?customerName=${encodeURIComponent(customerName)}`);
+      const response = await apiFetch(`${apiUrl}/orders`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
       setOrders(data.data);
-      localStorage.setItem('wholesale-customer-name', customerName);
     } catch (err) {
       setError(err.message || 'โหลดคำสั่งซื้อไม่สำเร็จ');
     } finally {

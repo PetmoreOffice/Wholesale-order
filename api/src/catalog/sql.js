@@ -12,7 +12,7 @@ export const catalogFields = `
   s.SKU_SPEC AS specification, s.SKU_USAGE AS usage, s.SKU_REMARK AS remark,
   g.GOODS_PRICE AS basePrice`;
 
-export const orderItemFields = `g.GOODS_KEY AS goodsId, g.GOODS_CODE AS goodsCode, s.SKU_KEY AS skuId, s.SKU_CODE AS sku, COALESCE(NULLIF(LTRIM(RTRIM(g.GOODS_ALIAS)), ''), NULLIF(LTRIM(RTRIM(s.SKU_NAME)), ''), g.GOODS_CODE) AS name, u.UTQ_NAME AS unitName, u.UTQ_QTY AS unitQuantity, s.SKU_MIN_ORDER AS minimumOrder`;
+export const orderItemFields = `g.GOODS_KEY AS goodsId, g.GOODS_CODE AS goodsCode, s.SKU_KEY AS skuId, s.SKU_CODE AS sku, COALESCE(NULLIF(LTRIM(RTRIM(g.GOODS_ALIAS)), ''), NULLIF(LTRIM(RTRIM(s.SKU_NAME)), ''), g.GOODS_CODE) AS name, u.UTQ_NAME AS unitName, u.UTQ_QTY AS unitQuantity, s.SKU_MIN_ORDER AS minimumOrder, s.SKU_MAX_ORDER AS maximumOrder`;
 
 export const orderItemJoins = 'FROM dbo.GOODSMASTER g INNER JOIN dbo.SKUMASTER s ON s.SKU_KEY = g.GOODS_SKU LEFT JOIN dbo.UOFQTY u ON u.UTQ_KEY = g.GOODS_UTQ';
 

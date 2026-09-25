@@ -30,16 +30,19 @@ app.get('/api/health', async (_req, res, next) => {
     await connectDatabase();
     res.json({ status: 'ok', database: 'connected' });
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(503).json({ status: 'error', database: 'unavailable' });
   }
 });
 
 app.use('/api/products', requireAuth, productsRouter);
 app.use('/api/orders', ordersRouter);
 
+// Details stay in the server log; SQL and Firebase internals never reach the browser.
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: 'INTERNAL_SERVER_ERROR', message: error.message });
+  if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'INVALID_JSON', message: 'รูปแบบข้อมูลไม่ถูกต้อง' });
+  return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR', message: 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่หรือติดต่อผู้ดูแลระบบ' });
 });
 
 app.listen(port, () => console.log(`Wholesale API listening on http://localhost:${port}`));
