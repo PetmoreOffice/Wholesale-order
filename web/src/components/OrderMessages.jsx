@@ -1,14 +1,15 @@
 import React from 'react';
+import { dateTime } from '../lib/format.js';
 
-export function OrderMessages({ messages }) {
+export function OrderMessages({ messages, title = 'ข้อความ' }) {
   if (!messages?.length) return null;
   return (
     <section className="order-messages" aria-label="ข้อความในคำสั่งซื้อ">
-      <b>ข้อความ</b>
+      <h3>{title}</h3>
       <ol>
         {messages.map(entry => (
-          <li key={entry.messageId} className={entry.senderRole === 'admin' ? 'from-admin' : 'from-customer'}>
-            <small>{entry.senderRole === 'admin' ? 'แอดมิน' : 'ลูกค้า'} · {entry.senderName} · {new Date(entry.createdAt).toLocaleString('th-TH')}</small>
+          <li key={entry.messageId} data-sender={entry.senderRole}>
+            <small><b>{entry.senderRole === 'admin' ? 'แอดมิน' : 'ลูกค้า'}</b> · {entry.senderName} · {dateTime(entry.createdAt)}</small>
             <p>{entry.messageBody}</p>
           </li>
         ))}

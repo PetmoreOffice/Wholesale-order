@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { createBarcodeDetector } from '../../lib/barcodeDetector.js';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 // The WebAssembly fallback is heavier than the native detector; ~7 frames a second is plenty for a barcode.
 const SCAN_INTERVAL_MS = 150;
@@ -69,19 +71,18 @@ export function Scanner({ onResult, onClose }) {
 
   return (
     <Dialog className="scanner" labelledBy="scanner-title" onClose={onClose}>
-      <DialogClose className="close" aria-label="ปิดหน้าสแกน"><X aria-hidden="true" /></DialogClose>
-      <p className="eyebrow">MOBILE SCAN</p>
+      <DialogClose className="icon-button close" aria-label="ปิดหน้าสแกน"><X aria-hidden="true" /></DialogClose>
       <DialogTitle id="scanner-title">สแกนบาร์โค้ดสินค้า</DialogTitle>
       <div className="camera">
         <video ref={videoRef} muted playsInline />
         <div className="scan-line" />
       </div>
-      <p className="scanner-state" role="status">{state}</p>
+      <p className="dialog-intro" role="status">{state}</p>
       <form onSubmit={event => { event.preventDefault(); if (manual.trim()) onResult(manual.trim()); }}>
         <label htmlFor="barcode">หรือกรอกรหัสบาร์โค้ด / SKU</label>
         <div className="manual-scan">
-          <input id="barcode" value={manual} onChange={e => setManual(e.target.value)} placeholder="เช่น 8859816300611" autoComplete="off" />
-          <button className="secondary">ค้นหา</button>
+          <Input id="barcode" value={manual} onChange={e => setManual(e.target.value)} placeholder="เช่น 8859816300611" autoComplete="off" />
+          <Button variant="outline">ค้นหา</Button>
         </div>
       </form>
     </Dialog>

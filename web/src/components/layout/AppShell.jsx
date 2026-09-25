@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
+import { Boxes, ClipboardList, Inbox, LogOut, Package, PanelLeft } from 'lucide-react';
 import { auth } from '../../firebase.js';
 
+export function BrandMark() {
+  return <span className="brand-mark" aria-hidden="true"><Boxes /></span>;
+}
+
 export function AppShell({ session, children }) {
+  // Desktop: collapses the rail to icons. Phone: opens the drawer.
   const [navigationOpen, setNavigationOpen] = useState(false);
   const navigate = useNavigate();
-  const closeNavigation = () => setNavigationOpen(false);
-  const navClass = ({ isActive }) => (isActive ? 'active' : '');
+  const closeOnPhone = () => setNavigationOpen(false);
+  const links = [
+    { to: '/catalog', label: 'สินค้า', icon: Package },
+    ...(session.role === 'customer' ? [{ to: '/orders', label: 'คำสั่งซื้อของฉัน', icon: ClipboardList }] : []),
+    ...(session.role === 'admin' ? [{ to: '/admin', label: 'คิวงานคำสั่งซื้อ', icon: Inbox }] : []),
+  ];
   async function logOut() {
     // Start the next account at its own home page instead of this account's last URL.
     navigate('/', { replace: true });
@@ -15,36 +25,37 @@ export function AppShell({ session, children }) {
   }
   return (
     <div className={`app-shell ${navigationOpen ? 'navigation-open' : ''}`}>
-      <button className="nav-scrim" aria-label="ปิดเมนู" onClick={closeNavigation} />
+      <button className="nav-scrim" tabIndex={-1} aria-label="ปิดเมนู" onClick={closeOnPhone} />
       <nav id="main-navigation" className="sidebar" aria-label="เมนูหลัก">
-        <Link className="brand" to="/" onClick={closeNavigation}>
-          <span>◈</span> WHOLESALE<br />CONTROL DESK
+        <Link className="brand" to="/" onClick={closeOnPhone}>
+          <BrandMark />
+          <span className="nav-label">Wholesale<br />Control Desk</span>
         </Link>
         <div className="nav-group">
-          <NavLink to="/catalog" className={navClass} onClick={closeNavigation}>▦ สินค้า</NavLink>
-          {session.role === 'customer' && (
-            <NavLink to="/orders" className={navClass} onClick={closeNavigation}>▤ คำสั่งซื้อของฉัน</NavLink>
-          )}
-          {session.role === 'admin' && (
-            <NavLink to="/admin" className={navClass} onClick={closeNavigation}>▣ Admin Queue</NavLink>
-          )}
+          {links.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} title={label} onClick={closeOnPhone}>
+              <Icon aria-hidden="true" />
+              <span className="nav-label">{label}</span>
+            </NavLink>
+          ))}
         </div>
-        <div className="nav-foot">ต้องการความช่วยเหลือ?<br /><b>ติดต่อทีมงาน</b></div>
       </nav>
-      <main>
+      <div className="app-main">
         <header className="topbar">
-          <button className="menu" aria-label="ย่อหรือขยายเมนูหลัก" aria-pressed={navigationOpen} aria-controls="main-navigation" onClick={() => setNavigationOpen(open => !open)}>☰</button>
+          <button className="icon-button" aria-label="ย่อหรือขยายเมนูหลัก" aria-pressed={navigationOpen} aria-controls="main-navigation" onClick={() => setNavigationOpen(open => !open)}>
+            <PanelLeft aria-hidden="true" />
+          </button>
           <div className="account">
-            <span className="avatar">{session.name.slice(0, 1)}</span>
-            <span>
+            <span className="avatar" aria-hidden="true">{session.name.slice(0, 1)}</span>
+            <span className="account-name">
               <b>{session.name}</b>
               <small>{session.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ลูกค้าขายส่ง'}</small>
             </span>
-            <button className="text-button" onClick={logOut}>ออกจากระบบ</button>
+            <button className="icon-button" onClick={logOut} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut aria-hidden="true" /></button>
           </div>
         </header>
-        {children}
-      </main>
+        <main className="app-content">{children}</main>
+      </div>
     </div>
   );
 }

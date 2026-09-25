@@ -1,21 +1,55 @@
 import React from 'react';
+import { Check } from 'lucide-react';
+import { dateTime } from '../lib/format.js';
 import { statusText } from '../lib/orderStatus.js';
 
-const steps = ['submitted', 'assigned', 'approved', 'erp_entry', 'completed'];
+const steps = [
+  { status: 'submitted', label: 'ส่งคำสั่งซื้อ' },
+  { status: 'assigned', label: 'แอดมินตรวจสอบ' },
+  { status: 'approved', label: 'อนุมัติ' },
+  { status: 'erp_entry', label: 'บันทึกเข้า ERP' },
+  { status: 'completed', label: 'เสร็จสมบูรณ์' },
+];
 // Side states pause the rail at the step where the order was when it left the main path.
-const railPosition = { need_information: 'assigned' };
+const railPosition = { need_information: 'assigned', preparing: 'erp_entry', shipped: 'erp_entry' };
 
 export function OrderProgress({ order }) {
-  const current = steps.indexOf(railPosition[order.status] || order.status);
+  const current = steps.findIndex(step => step.status === (railPosition[order.status] || order.status));
   const latestAdminMessage = [...(order.messages || [])].reverse().find(entry => entry.senderRole === 'admin');
-  return <section className="order-progress" aria-label="ความคืบหน้าคำสั่งซื้อ">
-    <h3>สถานะ: {statusText[order.status] || order.status}</h3>
-    <ol>{steps.map((step, index) => <li key={step} aria-current={index === current ? 'step' : undefined} className={index <= current ? 'reached' : ''}>{statusText[step]}</li>)}</ol>
-    {order.status === 'draft' && <p>บันทึกร่างแล้ว กรุณาตรวจรายการและส่งให้แอดมิน</p>}
-    {order.status === 'need_information' && <p role="status">รอข้อมูลเพิ่มจากลูกค้า{latestAdminMessage ? `: ${latestAdminMessage.messageBody}` : ''}</p>}
-    {order.status === 'rejected' && <p role="status">ไม่สามารถดำเนินการคำสั่งซื้อนี้ได้{latestAdminMessage ? ` — เหตุผล: ${latestAdminMessage.messageBody}` : ''}</p>}
-    {order.createdByRole === 'admin' && <p>สั่งแทนโดย: {order.createdByName} · {order.orderSource === 'phone' ? 'ลูกค้าโทรมาสั่ง' : 'ลูกค้าฝากสั่ง'}</p>}
-    {order.assignedAdminName && <p>ผู้รับผิดชอบ: {order.assignedAdminName}</p>}
-    {order.history?.length > 0 && <details><summary>ประวัติการดำเนินการ</summary><ul>{order.history.map(entry => <li key={entry.historyId}>{statusText[entry.toStatus] || entry.toStatus} · {entry.actorName}<br/><small>{new Date(entry.createdAt).toLocaleString('th-TH')} · {entry.message}</small></li>)}</ul></details>}
-  </section>;
+  const paused = order.status === 'need_information' || order.status === 'rejected';
+  return (
+    <section className="order-progress" aria-label="ความคืบหน้าคำสั่งซื้อ">
+      <h3>ความคืบหน้า</h3>
+      <ol>
+        {steps.map((step, index) => {
+          const state = index < current || order.status === 'completed' ? 'done' : index === current ? (paused ? 'paused' : 'current') : 'todo';
+          return (
+            <li key={step.status} data-state={state} aria-current={index === current ? 'step' : undefined}>
+              <span className="step-dot" aria-hidden="true">{state === 'done' ? <Check /> : index + 1}</span>
+              <span>{step.label}{index === current && paused && <small> · {statusText[order.status]}</small>}</span>
+            </li>
+          );
+        })}
+      </ol>
+      {order.status === 'draft' && <p className="progress-note">ยังไม่ได้ส่ง — ตรวจรายการแล้วส่งให้แอดมิน</p>}
+      {order.status === 'rejected' && <p className="progress-note" data-tone="danger">ไม่สามารถดำเนินการได้{latestAdminMessage ? ` — ${latestAdminMessage.messageBody}` : ''}</p>}
+      <dl className="progress-facts">
+        {order.assignedAdminName && <><dt>ผู้รับผิดชอบ</dt><dd>{order.assignedAdminName}</dd></>}
+        {order.createdByRole === 'admin' && <><dt>สั่งแทนโดย</dt><dd>{order.createdByName} · {order.orderSource === 'phone' ? 'ลูกค้าโทรมาสั่ง' : 'ลูกค้าฝากสั่ง'}</dd></>}
+      </dl>
+      {order.history?.length > 0 && (
+        <details className="history">
+          <summary>ประวัติการดำเนินการ ({order.history.length})</summary>
+          <ol>
+            {order.history.map(entry => (
+              <li key={entry.historyId}>
+                <b>{statusText[entry.toStatus] || entry.toStatus}</b> · {entry.actorName}
+                <small>{dateTime(entry.createdAt)}{entry.message ? ` · ${entry.message}` : ''}</small>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </section>
+  );
 }

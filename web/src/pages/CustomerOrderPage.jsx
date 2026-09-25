@@ -25,17 +25,17 @@ export function CustomerOrderPage() {
   }, [orderId]);
 
   return (
-    <AnimatedContent className="workspace" distance={18}>
+    <AnimatedContent className="page" distance={12}>
       {order ? (
         <CustomerOrderDetail key={order.orderId} initialOrder={order} onChanged={() => {}} onClose={() => navigate('/orders')} />
       ) : error ? (
-        <div className="state error">
+        <div className="panel state" data-tone="danger">
           <b>เปิดคำสั่งซื้อไม่ได้</b>
           <p>{error}</p>
-          <Button asChild variant="outline" className="secondary"><Link to="/orders">กลับไปคำสั่งซื้อ</Link></Button>
+          <Button asChild variant="outline"><Link to="/orders">กลับไปคำสั่งซื้อ</Link></Button>
         </div>
       ) : (
-        <div className="state">กำลังโหลดคำสั่งซื้อ…</div>
+        <div className="panel state" aria-busy="true">กำลังโหลดคำสั่งซื้อ…</div>
       )}
     </AnimatedContent>
   );

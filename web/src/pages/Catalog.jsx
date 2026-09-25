@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { ScanBarcode, Search, X } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
+import { count } from '../lib/format.js';
 import { Cart } from '../components/catalog/Cart.jsx';
 import { OrderReview } from '../components/catalog/OrderReview.jsx';
-import { ProductRow } from '../components/catalog/ProductRow.jsx';
+import { ProductRow, ProductRowSkeleton } from '../components/catalog/ProductRow.jsx';
 import { Scanner } from '../components/catalog/Scanner.jsx';
+import { PageHeader } from '../components/PageHeader.jsx';
 import { AnimatedContent } from '../components/react-bits/AnimatedContent.jsx';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 
 const PAGE_SIZE = 50;
 
@@ -81,20 +84,25 @@ export function Catalog({ session }) {
   }, [submittedQuery, department, retry, page]);
 
   useEffect(() => {
-    localStorage.setItem(cartKey, JSON.stringify(cart));
+    try { localStorage.setItem(cartKey, JSON.stringify(cart)); } catch { /* storage full or blocked: cart still works in memory */ }
   }, [cart, cartKey]);
 
   function add(product) {
     setCart(current => {
       const found = current.find(item => item.goodsId === product.goodsId);
+      const maximum = Number(product.maximumOrder) || Infinity;
       return found
-        ? current.map(item => item.goodsId === product.goodsId ? { ...item, quantity: item.quantity + 1 } : item)
+        ? current.map(item => item.goodsId === product.goodsId ? { ...item, quantity: Math.min(maximum, item.quantity + 1) } : item)
         : [...current, { ...product, quantity: Number(product.minimumOrder) || 1 }];
     });
   }
 
   function updateCart(goodsId, quantity) {
     setCart(items => quantity === 0 ? items.filter(item => item.goodsId !== goodsId) : items.map(item => item.goodsId === goodsId ? { ...item, quantity } : item));
+  }
+
+  function clearSearch() {
+    setQuery(''); setPage(1); setSubmittedQuery('');
   }
 
   async function scan(barcode) {
@@ -117,73 +125,82 @@ export function Catalog({ session }) {
     }
   }
 
+  const inCart = new Map(cart.map(item => [item.goodsId, item.quantity]));
+
   return (
     <>
-      <section className="catalog-layout" id="catalog">
-        <AnimatedContent className="catalog-content" distance={16}>
-          <p className="eyebrow">CUSTOMER PORTAL / CATALOG</p>
-          <div className="title-row">
-            <div>
-              <h1>ค้นหาสินค้า</h1>
-              <p>เลือกสินค้าและหน่วยขายที่ต้องการก่อนเพิ่มลงตะกร้า</p>
-            </div>
-            <Button type="button" variant="outline" className="scan-button" onClick={() => setScanner(true)}>⌁ <span>สแกนบาร์โค้ด</span></Button>
-          </div>
-          <form className="search-bar" onSubmit={e => { e.preventDefault(); setPage(1); setSubmittedQuery(query); }}>
+      <div className="page catalog-layout">
+        <AnimatedContent className="catalog-content" distance={12}>
+          <PageHeader
+            title="สินค้า"
+            description="ค้นหาด้วยชื่อ, SKU หรือบาร์โค้ด แล้วเลือกหน่วยขายก่อนเพิ่มลงตะกร้า"
+            actions={<Button type="button" variant="outline" size="lg" onClick={() => setScanner(true)}><ScanBarcode aria-hidden="true" /> สแกนบาร์โค้ด</Button>}
+          />
+          <form className="search-bar" role="search" onSubmit={e => { e.preventDefault(); setPage(1); setSubmittedQuery(query.trim()); }}>
             <label className="sr-only" htmlFor="search">ค้นหาสินค้า</label>
-            <Input id="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="ค้นหาชื่อสินค้า, SKU หรือบาร์โค้ด" />
-            <Button className="primary">ค้นหา</Button>
+            <InputGroup className="search-field h-10 bg-card">
+              <InputGroupInput id="search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="ชื่อสินค้า, SKU หรือบาร์โค้ด" autoComplete="off" />
+              <InputGroupAddon align="inline-start"><Search aria-hidden="true" /></InputGroupAddon>
+            </InputGroup>
+            <Button size="lg">ค้นหา</Button>
           </form>
           <nav className="type-tabs" aria-label="ประเภทสินค้า">
-            <Button type="button" variant={!department ? 'default' : 'ghost'} className={!department ? 'type-tab active' : 'type-tab'} onClick={() => { setPage(1); setDepartment(''); }}>ทั้งหมด</Button>
+            <button type="button" aria-pressed={!department} onClick={() => { setPage(1); setDepartment(''); }}>ทั้งหมด</button>
             {departments.map(item => (
-              <Button type="button" key={item.id} variant={String(item.id) === department ? 'default' : 'ghost'} className={String(item.id) === department ? 'type-tab active' : 'type-tab'} onClick={() => { setPage(1); setDepartment(String(item.id)); }}>{item.name}</Button>
+              <button type="button" key={item.id} aria-pressed={String(item.id) === department} onClick={() => { setPage(1); setDepartment(String(item.id)); }}>{item.name}</button>
             ))}
           </nav>
           {scanNotice && (
             <div className="notice" role="status">
-              {scanNotice}
-              <button onClick={() => setScanNotice('')} aria-label="ปิด">×</button>
+              <span>{scanNotice}</span>
+              <button type="button" className="icon-button" onClick={() => setScanNotice('')} aria-label="ปิดข้อความ"><X aria-hidden="true" /></button>
             </div>
           )}
-          <section className="catalog" aria-live="polite">
+          <section className="panel catalog" aria-live="polite" aria-busy={loading}>
             <div className="catalog-head">
-              <span>{loading ? 'กำลังโหลดสินค้า…' : totalProducts ? `รวม ${totalProducts.toLocaleString('th-TH')} รายการ · หน้า ${page} จาก ${totalPages}` : 'ไม่พบสินค้า'}</span>
-              <span>สินค้าเลิกผลิตถูกซ่อนไว้แล้ว</span>
+              <span>
+                {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
+              </span>
+              {submittedQuery && <button type="button" className="link-button" onClick={clearSearch}>ล้างการค้นหา</button>}
             </div>
+            <div className="catalog-columns" aria-hidden="true"><span>สินค้า</span><span>ขั้นต่ำ</span><span>ราคาอ้างอิง</span><span /></div>
             {error ? (
-              <div className="state error">
+              <div className="state" data-tone="danger">
                 <b>โหลดสินค้าไม่สำเร็จ</b>
                 <p>{error}</p>
-                <Button type="button" variant="outline" className="secondary" onClick={() => setRetry(value => value + 1)}>ลองใหม่</Button>
+                <Button type="button" variant="outline" onClick={() => setRetry(value => value + 1)}>ลองใหม่</Button>
               </div>
             ) : loading ? (
-              <div className="state">กำลังดึงข้อมูลจากคลังสินค้า…</div>
+              Array.from({ length: 6 }, (_, index) => <ProductRowSkeleton key={index} />)
             ) : products.length ? (
               <>
-                {products.map(product => <ProductRow key={`${product.goodsId}-${product.unitId || ''}`} product={product} onAdd={add} />)}
-                <div className="catalog-pagination" aria-label="เปลี่ยนหน้าสินค้า">
-                  <Button type="button" variant="outline" size="sm" className="pagination-control" disabled={page === 1} onClick={() => setPage(current => current - 1)}>ก่อนหน้า</Button>
-                  <div className="pagination-pages">
-                    {visiblePages(page, totalPages).map(value => typeof value === 'string'
-                      ? <span key={value} aria-hidden="true">…</span>
-                      : <Button type="button" key={value} variant={value === page ? 'default' : 'outline'} size="sm" className="pagination-page" aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)}>{value}</Button>)}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" className="pagination-control" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)}>ถัดไป</Button>
-                </div>
+                {products.map(product => <ProductRow key={`${product.goodsId}-${product.unitId || ''}`} product={product} inCart={inCart.get(product.goodsId) || 0} onAdd={add} />)}
+                {totalPages > 1 && (
+                  <nav className="catalog-pagination" aria-label="เปลี่ยนหน้าสินค้า">
+                    <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(current => current - 1)}>ก่อนหน้า</Button>
+                    <div className="pagination-pages">
+                      {visiblePages(page, totalPages).map(value => typeof value === 'string'
+                        ? <span key={value} aria-hidden="true">…</span>
+                        : <Button type="button" key={value} variant={value === page ? 'default' : 'ghost'} size="sm" className="num" aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)}>{value}</Button>)}
+                    </div>
+                    <Button type="button" variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)}>ถัดไป</Button>
+                  </nav>
+                )}
               </>
             ) : (
               <div className="state">
-                <b>ไม่พบสินค้า</b>
-                <p>ลองค้นหาด้วย SKU หรือชื่อสินค้าอื่น</p>
+                <b>ไม่พบสินค้า{submittedQuery ? ` “${submittedQuery}”` : ''}</b>
+                <p>ลองค้นหาด้วย SKU, บาร์โค้ด หรือชื่อสินค้าที่สั้นลง</p>
+                {submittedQuery && <Button type="button" variant="outline" onClick={clearSearch}>ล้างการค้นหา</Button>}
               </div>
             )}
           </section>
+          <p className="catalog-footnote">ซ่อนสินค้าที่เลิกผลิตแล้ว · ราคาสุทธิยืนยันโดยแอดมินหลังส่งคำสั่งซื้อ</p>
         </AnimatedContent>
-        <AnimatedContent className="catalog-cart-motion" distance={14} direction="horizontal" reverse delay={0.08}>
+        <AnimatedContent className="catalog-cart" distance={12} direction="horizontal" reverse delay={0.06}>
           <Cart items={cart} onChange={updateCart} onReview={() => setReview(true)} />
         </AnimatedContent>
-      </section>
+      </div>
       {scanner && <Scanner onResult={scan} onClose={() => setScanner(false)} />}
       {review && <OrderReview items={cart} accountName={session.name} role={session.role} onSaved={() => setCart([])} onClose={() => setReview(false)} />}
     </>

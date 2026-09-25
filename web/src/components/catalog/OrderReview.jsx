@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { apiFetch, apiUrl } from '../../api/client.js';
+import { count } from '../../lib/format.js';
 import { useNavigate } from 'react-router';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -86,18 +87,17 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
 
   return (
     <Dialog className="review" labelledBy="review-title" locked={saving || lookingUp} onClose={onClose}>
-        <Button type="button" variant="ghost" size="icon" className="close" disabled={saving || lookingUp} onClick={onClose} aria-label="ปิดหน้าตรวจสอบคำสั่งซื้อ"><X aria-hidden="true" /></Button>
-        <p className="eyebrow">ORDER DRAFT</p>
-        <DialogTitle id="review-title">ตรวจสอบรายการ</DialogTitle>
-        <p className="review-intro">{assisted ? 'เลือกลูกค้าที่ฝากสั่งและตรวจรายการก่อนยืนยัน' : 'ตรวจรายการก่อนยืนยันสั่งซื้อ หรือบันทึกร่างไว้ทำต่อ'}</p>
+        <button type="button" className="icon-button close" disabled={saving || lookingUp} onClick={onClose} aria-label="ปิดหน้าตรวจสอบคำสั่งซื้อ"><X aria-hidden="true" /></button>
+        <DialogTitle id="review-title">ตรวจสอบคำสั่งซื้อ</DialogTitle>
+        <p className="dialog-intro">{assisted ? 'เลือกลูกค้าที่ฝากสั่งและตรวจรายการก่อนยืนยัน' : 'ตรวจรายการก่อนยืนยันสั่งซื้อ หรือบันทึกร่างไว้ทำต่อ'}</p>
         <ul className="review-list">
           {(order?.items || items).map(item => (
             <li key={item.goodsId}>
               <div>
                 <b>{item.name}</b>
-                <small>{item.sku} · {item.unitName}</small>
+                <small className="sku">{item.sku}</small>
               </div>
-              <strong>{item.quantity}</strong>
+              <strong className="num">{count.format(item.quantity)} <small>{item.unitName}</small></strong>
             </li>
           ))}
         </ul>
@@ -105,10 +105,10 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
           <legend>สั่งซื้อแทนลูกค้า</legend>
           <Label htmlFor="assisted-email">อีเมลบัญชีลูกค้า</Label>
           <Input id="assisted-email" type="email" value={email} onChange={event => { setEmail(event.target.value); setCustomer(null); }} />
-          <Button type="button" variant="outline" className="secondary" onClick={lookupCustomer} disabled={!email.trim() || lookingUp}>{lookingUp ? 'กำลังค้นหา…' : 'ค้นหาลูกค้า'}</Button>
-          {customer && <p role="status">ลูกค้าที่เลือก: <b>{customer.name}</b> · {customer.email}</p>}
+          <Button type="button" variant="outline" onClick={lookupCustomer} disabled={!email.trim() || lookingUp}>{lookingUp ? 'กำลังค้นหา…' : 'ค้นหาลูกค้า'}</Button>
+          {customer && <p className="form-notice" role="status">ลูกค้าที่เลือก: <b>{customer.name}</b> · {customer.email}</p>}
           <Label htmlFor="order-source">ช่องทางรับคำสั่งซื้อ</Label>
-          <select id="order-source" value={source} onChange={event => setSource(event.target.value)}><option value="phone">ลูกค้าโทรมาสั่ง</option><option value="assisted">ลูกค้าฝากสั่ง</option></select>
+          <select id="order-source" className="select" value={source} onChange={event => setSource(event.target.value)}><option value="phone">ลูกค้าโทรมาสั่ง</option><option value="assisted">ลูกค้าฝากสั่ง</option></select>
         </fieldset>}
         <Label htmlFor="customer-name">{assisted ? 'Admin ผู้สั่งแทน' : 'บัญชีผู้สั่งซื้อ'}</Label>
         <Input id="customer-name" value={customerName} readOnly />
@@ -116,18 +116,17 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
         <Textarea id="delivery" readOnly={!!order || saving} value={delivery} onChange={event => setDelivery(event.target.value)} placeholder="ระบุที่อยู่ จุดรับสินค้า หรือผู้ติดต่อ" rows="3" />
         <Label htmlFor="note">หมายเหตุถึงแอดมิน</Label>
         <Textarea id="note" readOnly={!!order || saving} value={note} onChange={event => setNote(event.target.value)} placeholder="เช่น วันที่ต้องการรับสินค้า หรือคำขอเพิ่มเติม" rows="3" />
-        <div className="price-pending">
-          <b>ราคาสุทธิจะยืนยันภายหลัง</b>
-          <span>กำลังรอเชื่อมตารางราคาตามลูกค้า</span>
+        <div className="callout" data-tone="attention">
+          <b>ราคาสุทธิยืนยันภายหลัง</b>
+          <span>แอดมินจะยืนยันราคาตามบัญชีของคุณหลังตรวจคำสั่งซื้อ</span>
         </div>
-        {saved && <p className="saved" role="status">{order.status === 'draft' ? 'บันทึกร่างแล้ว' : 'ยืนยันสั่งซื้อแล้ว'}: {order.orderNumber}</p>}
-        {order?.status === 'submitted' && <p className="saved" role="status">ส่งคำสั่งซื้อให้แอดมินตรวจสอบแล้ว</p>}
+        {saved && <p className="form-notice" role="status">{order.status === 'draft' ? 'บันทึกร่างแล้ว' : 'ส่งคำสั่งซื้อให้แอดมินตรวจสอบแล้ว'} · <span className="num">{order.orderNumber}</span></p>}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="review-actions">
-          <Button type="button" variant="outline" className="secondary" disabled={saving || lookingUp} onClick={order ? () => navigate(`${assisted ? '/admin/orders' : '/orders'}/${order.orderId}`) : onClose}>{order ? 'เปิดดูคำสั่งซื้อนี้' : 'กลับไปแก้ไข'}</Button>
-          {!order && !assisted && <Button type="button" variant="outline" className="secondary" onClick={() => saveDraft(false)} disabled={saving}>บันทึกร่าง</Button>}
-          {!order && <Button type="button" className="primary" onClick={() => saveDraft(true)} disabled={saving || lookingUp || (assisted && !customer)}>{saving ? 'กำลังบันทึก…' : assisted ? 'ยืนยันสั่งซื้อแทนลูกค้า' : 'ยืนยันสั่งซื้อ'}</Button>}
-          {order?.status === 'draft' && <Button type="button" className="primary" onClick={submitOrder} disabled={saving}>{saving ? 'กำลังส่ง…' : 'ส่งให้แอดมินตรวจสอบ'}</Button>}
+          <Button type="button" variant="outline" disabled={saving || lookingUp} onClick={order ? () => navigate(`${assisted ? '/admin/orders' : '/orders'}/${order.orderId}`) : onClose}>{order ? 'เปิดดูคำสั่งซื้อนี้' : 'กลับไปแก้ไข'}</Button>
+          {!order && !assisted && <Button type="button" variant="outline" onClick={() => saveDraft(false)} disabled={saving}>บันทึกร่าง</Button>}
+          {!order && <Button type="button" onClick={() => saveDraft(true)} disabled={saving || lookingUp || (assisted && !customer)}>{saving ? 'กำลังบันทึก…' : assisted ? 'ยืนยันสั่งซื้อแทนลูกค้า' : 'ยืนยันสั่งซื้อ'}</Button>}
+          {order?.status === 'draft' && <Button type="button" onClick={submitOrder} disabled={saving}>{saving ? 'กำลังส่ง…' : 'ส่งให้แอดมินตรวจสอบ'}</Button>}
         </div>
     </Dialog>
   );

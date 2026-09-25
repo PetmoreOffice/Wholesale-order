@@ -34,8 +34,7 @@ export function App() {
   if (!firebaseConfigured) {
     return (
       <main className="login-page">
-        <section className="login-panel">
-          <p className="eyebrow">SETUP REQUIRED</p>
+        <section className="login-panel standalone">
           <h1>ยังไม่ได้เชื่อม Firebase</h1>
           <p>คัดลอก .env.firebase.example เป็น .env แล้วกรอกค่า Firebase Web App ก่อนเริ่มใช้งาน</p>
         </section>
@@ -45,7 +44,7 @@ export function App() {
   if (authLoading) {
     return (
       <main className="login-page">
-        <section className="login-panel"><p>กำลังตรวจสอบ Session…</p></section>
+        <section className="login-panel standalone" aria-busy="true"><p>กำลังตรวจสอบการเข้าสู่ระบบ…</p></section>
       </main>
     );
   }
@@ -57,10 +56,10 @@ export function App() {
       <Routes>
         <Route path="/" element={<Navigate to={home} replace />} />
         <Route path="/catalog" element={<Catalog session={session} />} />
-        {session.role === 'customer' && <Route path="/orders" element={<CustomerOrders accountName={session.name} />} />}
+        {session.role === 'customer' && <Route path="/orders" element={<CustomerOrders />} />}
         {session.role === 'customer' && <Route path="/orders/:orderId" element={<CustomerOrderPage />} />}
         {/* One route for the queue and its detail so selecting an order does not remount the queue. */}
-        {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminName={session.name} adminId={session.uid} />} />}
+        {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminId={session.uid} />} />}
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>
     </AppShell>
