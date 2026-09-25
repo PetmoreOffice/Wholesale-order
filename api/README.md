@@ -12,11 +12,12 @@
 
 - Firebase Authentication handles Email/Password sign-in and password reset.
 - Every product and order request must send a valid Firebase ID token.
-- A user without a custom role claim is treated as `customer`.
+- Every account needs a `role` custom claim (`admin` or `customer`). An account without one is refused (HTTP 403 `NO_ROLE`), so a self sign-up gets no access. Turn off "Enable create (sign-up)" in Firebase Authentication settings as well.
+- Disabled accounts and revoked sessions are refused immediately (account status is re-checked with Firebase at most once a minute).
 - Only `admin` can open the Admin queue, claim orders, or change order status.
 - Customer order ownership is checked with the Firebase UID, not a name supplied by the browser.
 
-Set a role after creating the user in Firebase Authentication:
+Admins create users, change roles and disable accounts from the web app's **ตั้งค่าผู้ใช้งาน** page. To bootstrap the first admin, set a role from the terminal:
 
 ```powershell
 npm run role:set -- FIREBASE_UID admin
@@ -43,6 +44,11 @@ The user must sign out and sign in again after a role change.
 - `POST /api/orders/:orderId/reply` — Customer answers a need-information request; the order returns to the Admin queue.
 - `GET /api/orders/:orderId/reorder-items` — Customer repeat order. Read-only: re-reads each line from the catalog with SELECT and returns cart-ready items plus any unavailable or quantity-adjusted lines. Nothing is written.
 - `GET /api/notifications` — in-app feed derived from order history (Customers: Admin actions on their orders; Admins: new submissions and customer replies) with an unread count.
+- `GET /api/admin/users` — Admin: every Firebase account with role, disabled flag, last sign-in / activity, "online now" (in-memory, last 5 minutes) and the customer profile.
+- `POST /api/admin/users` — Admin: creates a Firebase account (no password; the web app then sends Firebase's set-password email), sets its role and saves the profile.
+- `PATCH /api/admin/users/:uid` — Admin: updates display name, role (signs the user out so it applies) and profile. An admin cannot change their own role or demote the last admin.
+- `PATCH /api/admin/users/:uid/status` — Admin: `{ "disabled": true|false }`. Disabling also revokes the user's sessions. An admin cannot disable themselves or the last active admin.
+- `GET /api/profile` — the signed-in user's shop name, phone, address and tax ID (used to prefill the delivery address).
 - `POST /api/notifications/read` — marks the feed read for the signed-in user (stored in `data/orders.json`).
 
 ## Database safety
@@ -50,7 +56,7 @@ The user must sign out and sign in again after a role change.
 The API uses SQL only to read the product catalog. It does not run INSERT, UPDATE,
 DELETE, CREATE, ALTER, or DROP commands against the database.
 
-Orders, workflow history, customer messages, and Admin assignment logs are stored
+Orders, workflow history, customer messages, Admin assignment logs, and customer profiles (`customers`, keyed by Firebase UID) are stored
 only in data/orders.json. Back up this file before deploying or updating the app.
 
 ## Schema mapping

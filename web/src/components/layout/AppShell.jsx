@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
-import { Boxes, ClipboardList, House, Inbox, LogOut, Package, PanelLeft } from 'lucide-react';
+import { Boxes, ClipboardList, House, Inbox, LogOut, Package, PanelLeft, Settings } from 'lucide-react';
 import { auth } from '../../firebase.js';
 import { NotificationBell } from '../NotificationBell.jsx';
 
@@ -18,7 +18,7 @@ export function AppShell({ session, children }) {
     ...(session.role === 'customer' ? [{ to: '/home', label: 'หน้าหลัก', icon: House }] : []),
     { to: '/catalog', label: 'สินค้า', icon: Package },
     ...(session.role === 'customer' ? [{ to: '/orders', label: 'คำสั่งซื้อของฉัน', icon: ClipboardList }] : []),
-    ...(session.role === 'admin' ? [{ to: '/admin', label: 'คิวงานคำสั่งซื้อ', icon: Inbox }] : []),
+    ...(session.role === 'admin' ? [{ to: '/admin', label: 'คิวงานคำสั่งซื้อ', icon: Inbox }, { to: '/settings', label: 'ตั้งค่าผู้ใช้งาน', icon: Settings }] : []),
   ];
   async function logOut() {
     // Start the next account at its own home page instead of this account's last URL.

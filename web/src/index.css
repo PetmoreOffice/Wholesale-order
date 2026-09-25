@@ -615,6 +615,111 @@
   }
 }
 
+/* ─── Settings (admin users) ───────────────────────────────── */
+@layer components {
+  .settings-page { max-width: 1180px; }
+
+  /* Stat tiles: label, big tabular number, one line of context. */
+  .settings-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+  .settings-stats .panel { display: grid; gap: 2px; margin: 0; padding: 16px 20px; }
+  .settings-stats dt { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 13px; font-weight: 600; }
+  .settings-stats dd { margin: 0; }
+  .settings-stats dd.num { font-size: 30px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+  .settings-stats .stat-hint { color: var(--ink-3); font-size: 12px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-800); box-shadow: 0 0 0 3px var(--green-100); }
+
+  /* One panel: heading → toolbar → rows → count footer. */
+  .user-panel { overflow: hidden; }
+  .user-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; }
+  .user-panel-head h2 { margin: 0; font-size: 17px; }
+  .user-panel-head p { margin: 2px 0 0; color: var(--ink-3); font-size: 13px; }
+  .user-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 20px 14px; }
+  .user-search { width: min(100%, 320px); }
+  .segmented { display: inline-flex; max-width: 100%; gap: 2px; padding: 3px; border-radius: 10px; background: var(--muted-ui); overflow-x: auto; scrollbar-width: none; }
+  .segmented button { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); font: inherit; font-size: 13px; font-weight: 600; transition: background .15s ease, color .15s ease; }
+  .segmented button:hover { color: var(--ink); }
+  .segmented button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+  .segmented .num { color: var(--ink-3); font-weight: 500; }
+
+  .user-columns, .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 112px 140px 92px; gap: 16px; align-items: center; padding: 0 20px; }
+  .user-columns { min-height: 36px; border-block: 1px solid var(--line); background: var(--surface-sunken); color: var(--ink-3); font-size: 12px; font-weight: 600; }
+  .user-columns span:last-child { text-align: right; }
+  .user-row { min-height: 68px; padding-block: 12px; border-bottom: 1px solid var(--line); transition: background .15s ease; }
+  .user-row:hover { background: var(--surface-sunken); }
+  .user-row[data-disabled] .user-identity, .user-row[data-disabled] .user-role { opacity: .5; }
+  .user-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .user-identity > div { display: grid; min-width: 0; }
+  .user-identity b, .user-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-identity b { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .user-identity small { color: var(--ink-3); font-size: 13px; }
+  .user-self { flex: none; padding: 0 7px; border-radius: 999px; background: var(--lime-soft); color: var(--green-900); font-size: 11px; font-weight: 700; line-height: 18px; }
+  .user-avatar { position: relative; display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--green-50); color: var(--green-900); font-size: 14px; font-weight: 700; }
+  .user-avatar[data-online]::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--surface); border-radius: 50%; background: var(--green-800); }
+  .avatar-skeleton { width: 36px !important; height: 36px !important; border-radius: 50% !important; flex: none; }
+  .user-role .pill { font-size: 12px; }
+  .user-role .pill svg { width: 13px; height: 13px; }
+  .user-active { color: var(--ink-3); font-size: 13px; }
+  .user-active[data-online] { color: var(--green-800); font-weight: 600; }
+  .user-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .user-panel-foot { padding: 12px 20px; border-top: 1px solid var(--line); background: var(--surface-sunken); color: var(--ink-3); font-size: 13px; }
+  .user-panel .state { border-top: 1px solid var(--line); }
+  .state-icon { width: 28px; height: 28px; color: var(--ink-3); }
+
+  .confirm-dialog { width: min(100%, 440px); }
+
+  /* Side sheet (shadcn Sheet): the form keeps the list in view and has room to breathe. */
+  .sheet-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(5, 34, 27, .45); animation: fade-in .15s ease-out; }
+  .sheet { position: fixed; inset: 0 0 0 auto; z-index: 51; display: flex; width: min(100%, 520px); background: var(--surface); box-shadow: var(--shadow-lg); animation: sheet-enter .22s cubic-bezier(.22, 1, .36, 1); }
+  .sheet:focus { outline: 0; }
+  .sheet-form { display: flex; flex-direction: column; width: 100%; min-height: 0; }
+  .sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--line); }
+  .sheet-header h2 { margin: 0; font-size: 20px; }
+  .sheet-header p { margin: 4px 0 0; color: var(--ink-3); font-size: 14px; }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 24px; }
+  .sheet-body [data-slot="separator"] { background: var(--line); }
+  .sheet-body [data-slot="field-label"] { font-weight: 600; }
+  .sheet-body [data-slot="field"] { gap: 8px; }
+  .sheet-body [data-slot="input"], .sheet-body [data-slot="textarea"] { background: var(--surface); }
+  .sheet-body [data-slot="field-set"] > [data-slot="field-description"] { margin: -10px 0 4px; }
+  .sheet-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); background: var(--surface-sunken); }
+  .field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+  /* Choice cards for the role: icon, name, one-line meaning, radio. */
+  .role-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .role-option { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+  .role-option:hover { border-color: var(--green-800); }
+  .role-option[data-checked] { border-color: var(--green-800); background: var(--green-50); box-shadow: inset 0 0 0 1px var(--green-800); }
+  .role-options[data-disabled] .role-option { cursor: not-allowed; opacity: .6; }
+  .role-icon { width: 18px; height: 18px; margin-top: 2px; color: var(--green-800); }
+  .role-text { display: grid; gap: 2px; }
+  .role-text b { font-size: 14px; font-weight: 700; }
+  .role-text small { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
+  .role-option [data-slot="radio-group-item"] { margin-top: 3px; }
+
+  /* Four columns need room; below that each row stacks identity over role and activity. */
+  @media (max-width: 1024px) {
+    .user-columns { display: none; }
+    .user-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "identity actions" "role active"; gap: 8px 12px; padding: 14px 20px; }
+    .user-identity { grid-area: identity; }
+    .user-actions { grid-area: actions; }
+    .user-role { grid-area: role; padding-left: 48px; }
+    .user-active { grid-area: active; justify-self: end; }
+  }
+
+  @media (max-width: 760px) {
+    .user-row { padding-inline: 16px; }
+    .settings-stats { grid-template-columns: 1fr 1fr; }
+    .settings-stats .panel:first-child { grid-column: 1 / -1; }
+    .settings-stats dd.num { font-size: 26px; }
+    .user-panel-head, .user-toolbar { padding-inline: 16px; }
+    .user-search { width: 100%; }
+    .sheet { width: 100%; }
+    .sheet-header, .sheet-body { padding-inline: 20px; }
+    .sheet-footer { display: grid; grid-template-columns: 1fr 1fr; padding-inline: 20px; }
+    .field-pair, .role-options { grid-template-columns: 1fr; }
+  }
+}
+
 /* ─── Motion ───────────────────────────────────────────────── */
 @keyframes content-enter { from { opacity: 0; transform: translate(var(--enter-x, 0), var(--enter-y, 10px)); } to { opacity: 1; transform: none; } }
 @keyframes dialog-enter { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }

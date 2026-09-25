@@ -38,10 +38,13 @@ export async function readStore() {
       nextOrderId: Number(store.nextOrderId || 1),
       orders: Array.isArray(store.orders) ? store.orders : [],
       // uid -> ISO time the user last opened their notifications.
-      notificationReads: store.notificationReads && typeof store.notificationReads === 'object' ? store.notificationReads : {}
+      notificationReads: store.notificationReads && typeof store.notificationReads === 'object' ? store.notificationReads : {},
+      // uid -> customer profile (shop name, phone, delivery address, …). The Firebase account
+      // only holds sign-in data; everything about the business lives here, never in SQL.
+      customers: store.customers && typeof store.customers === 'object' ? store.customers : {}
     };
   } catch (error) {
-    if (error.code === 'ENOENT') return { nextOrderId: 1, orders: [], notificationReads: {} };
+    if (error.code === 'ENOENT') return { nextOrderId: 1, orders: [], notificationReads: {}, customers: {} };
     throw new Error('ไม่สามารถอ่านไฟล์ Order ได้: ' + error.message);
   }
 }

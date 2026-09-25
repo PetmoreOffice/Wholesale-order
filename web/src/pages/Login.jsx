@@ -23,7 +23,9 @@ export function Login() {
     } catch (authError) {
       setError(authError.code === 'auth/too-many-requests'
         ? 'มีการลองเข้าสู่ระบบหลายครั้ง กรุณารอสักครู่แล้วลองใหม่'
-        : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        : authError.code === 'auth/user-disabled'
+          ? 'บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ'
+          : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     } finally { setSubmitting(false); }
   }
 

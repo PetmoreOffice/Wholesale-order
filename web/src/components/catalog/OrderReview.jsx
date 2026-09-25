@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { apiFetch, apiUrl } from '../../api/client.js';
 import { count } from '../../lib/format.js';
 import { useNavigate } from 'react-router';
@@ -23,6 +23,17 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
   const [order, setOrder] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Start from the address an admin saved on the customer's profile; the customer can still edit it.
+  useEffect(() => {
+    if (assisted) return undefined;
+    let active = true;
+    apiFetch(`${apiUrl}/profile`)
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (active && data?.data?.address) setDelivery(current => current || data.data.address); })
+      .catch(() => { /* the address stays empty and can be typed */ });
+    return () => { active = false; };
+  }, [assisted]);
 
   async function lookupCustomer() {
     setLookingUp(true); setCustomer(null); setSaveError('');

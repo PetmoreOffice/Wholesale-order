@@ -116,7 +116,7 @@ ordersRouter.get('/admin/customer', requireRole('admin'), async (req, res, next)
   if (!email || email.length > 254) return badRequest(res, 'กรอกอีเมลลูกค้า');
   try {
     const user = await firebaseAuth().getUserByEmail(email);
-    if (user.disabled || user.customClaims?.role === 'admin') return badRequest(res, 'บัญชีนี้ไม่ใช่บัญชีลูกค้าที่ใช้งานได้');
+    if (user.disabled || user.customClaims?.role !== 'customer') return badRequest(res, 'บัญชีนี้ไม่ใช่บัญชีลูกค้าที่ใช้งานได้');
     return res.json({ data: { uid: user.uid, name: user.displayName || user.email, email: user.email } });
   } catch (error) {
     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') return res.status(404).json({ message: 'ไม่พบบัญชีลูกค้า กรุณาตรวจสอบอีเมล' });
@@ -132,7 +132,7 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
     if (assisted) {
       if (typeof req.body.customerId !== 'string' || !req.body.customerId) return badRequest(res, 'เลือกลูกค้าก่อนยืนยันสั่งซื้อ');
       const customer = await firebaseAuth().getUser(req.body.customerId);
-      if (customer.disabled || customer.customClaims?.role === 'admin') return badRequest(res, 'บัญชีลูกค้าไม่พร้อมใช้งาน');
+      if (customer.disabled || customer.customClaims?.role !== 'customer') return badRequest(res, 'บัญชีลูกค้าไม่พร้อมใช้งาน');
       customerId = customer.uid;
       customerName = customer.displayName || customer.email || customer.uid;
       if (!['phone', 'assisted'].includes(req.body.orderSource)) return badRequest(res, 'ระบุช่องทางรับคำสั่งซื้อ');
@@ -148,7 +148,8 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
         orderId,
         orderNumber,
         customerId,
-        customerName,
+        // The shop name from the customer profile reads better in the queue than an email.
+        customerName: store.customers[customerId]?.companyName || customerName,
         createdById: req.user.uid,
         createdByName: req.user.name,
         createdByRole: req.user.role,

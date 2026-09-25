@@ -6,6 +6,7 @@ import { requireAuth } from './middleware/auth.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
+import { profileRouter, usersRouter } from './routes/users.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -39,6 +40,8 @@ app.get('/api/health', async (_req, res, next) => {
 app.use('/api/products', requireAuth, productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/admin/users', usersRouter);
+app.use('/api/profile', profileRouter);
 
 // Details stay in the server log; SQL and Firebase internals never reach the browser.
 app.use((error, _req, res, _next) => {
