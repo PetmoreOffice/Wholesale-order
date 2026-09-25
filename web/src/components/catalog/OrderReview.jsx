@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { apiFetch, apiUrl } from '../../api/client.js';
+import { useNavigate } from 'react-router';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 export function OrderReview({ items, onClose, accountName, onSaved, role = 'customer' }) {
   const assisted = role === 'admin';
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [email, setEmail] = useState('');
   const [source, setSource] = useState('phone');
@@ -81,11 +85,10 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="review" role="dialog" aria-modal="true" aria-labelledby="review-title">
-        <Button type="button" variant="ghost" size="icon" className="close" disabled={saving || lookingUp} onClick={onClose} aria-label="ปิดหน้าตรวจสอบคำสั่งซื้อ">×</Button>
+    <Dialog className="review" labelledBy="review-title" locked={saving || lookingUp} onClose={onClose}>
+        <Button type="button" variant="ghost" size="icon" className="close" disabled={saving || lookingUp} onClick={onClose} aria-label="ปิดหน้าตรวจสอบคำสั่งซื้อ"><X aria-hidden="true" /></Button>
         <p className="eyebrow">ORDER DRAFT</p>
-        <h2 id="review-title">ตรวจสอบรายการ</h2>
+        <DialogTitle id="review-title">ตรวจสอบรายการ</DialogTitle>
         <p className="review-intro">{assisted ? 'เลือกลูกค้าที่ฝากสั่งและตรวจรายการก่อนยืนยัน' : 'ตรวจรายการก่อนยืนยันสั่งซื้อ หรือบันทึกร่างไว้ทำต่อ'}</p>
         <ul className="review-list">
           {(order?.items || items).map(item => (
@@ -121,12 +124,11 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
         {order?.status === 'submitted' && <p className="saved" role="status">ส่งคำสั่งซื้อให้แอดมินตรวจสอบแล้ว</p>}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="review-actions">
-          <Button type="button" variant="outline" className="secondary" disabled={saving || lookingUp} onClick={onClose}>{order ? assisted ? 'ปิด — ดูต่อใน Admin Queue' : 'ปิด — ดูต่อในคำสั่งซื้อของฉัน' : 'กลับไปแก้ไข'}</Button>
+          <Button type="button" variant="outline" className="secondary" disabled={saving || lookingUp} onClick={order ? () => navigate(`${assisted ? '/admin/orders' : '/orders'}/${order.orderId}`) : onClose}>{order ? 'เปิดดูคำสั่งซื้อนี้' : 'กลับไปแก้ไข'}</Button>
           {!order && !assisted && <Button type="button" variant="outline" className="secondary" onClick={() => saveDraft(false)} disabled={saving}>บันทึกร่าง</Button>}
           {!order && <Button type="button" className="primary" onClick={() => saveDraft(true)} disabled={saving || lookingUp || (assisted && !customer)}>{saving ? 'กำลังบันทึก…' : assisted ? 'ยืนยันสั่งซื้อแทนลูกค้า' : 'ยืนยันสั่งซื้อ'}</Button>}
           {order?.status === 'draft' && <Button type="button" className="primary" onClick={submitOrder} disabled={saving}>{saving ? 'กำลังส่ง…' : 'ส่งให้แอดมินตรวจสอบ'}</Button>}
         </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

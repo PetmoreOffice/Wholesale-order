@@ -1,30 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { apiFetch, apiUrl } from '../api/client.js';
 import { statusText } from '../lib/orderStatus.js';
-import { CustomerOrderDetail } from '../components/CustomerOrderDetail.jsx';
 import { AnimatedContent } from '../components/react-bits/AnimatedContent.jsx';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function CustomerOrders({ accountName }) {
-  const customerName = accountName;
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [detail, setDetail] = useState(null);
-  async function open(order) {
-    setError(''); setDetail(null);
-    try {
-      const response = await apiFetch(`${apiUrl}/orders/${order.orderId}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      setDetail(data.data);
-    } catch (err) { setError(err.message || 'โหลดรายละเอียดไม่สำเร็จ'); }
-  }
 
   async function load() {
-    if (!customerName.trim()) return;
     setLoading(true);
     setError('');
     try {
@@ -43,12 +31,11 @@ export function CustomerOrders({ accountName }) {
 
   return (
     <AnimatedContent className="workspace" distance={18}>
-      {detail ? <CustomerOrderDetail key={detail.orderId} initialOrder={detail} onChanged={load} onClose={() => setDetail(null)} /> : <>
       <p className="eyebrow">CUSTOMER PORTAL / ORDERS</p>
       <h1>คำสั่งซื้อของฉัน</h1>
       <p className="workspace-copy">รายการนี้ผูกกับบัญชีที่เข้าสู่ระบบโดยอัตโนมัติ</p>
       <div className="customer-lookup">
-        <Input value={customerName} readOnly aria-label="บัญชีผู้สั่งซื้อ" />
+        <Input value={accountName} readOnly aria-label="บัญชีผู้สั่งซื้อ" />
         <Button type="button" className="primary" onClick={load}>รีเฟรช</Button>
       </div>
       {error && <p className="form-error">{error}</p>}
@@ -63,7 +50,7 @@ export function CustomerOrders({ accountName }) {
                 <h2>{order.orderNumber}</h2>
                 <p>{order.itemCount} รายการ · อัปเดต {new Date(order.updatedAt).toLocaleString('th-TH')}</p>
               </div>
-              <Button type="button" variant="outline" className="secondary" onClick={() => open(order)}>ดูรายละเอียด</Button>
+              <Button asChild variant="outline" className="secondary"><Link to={`/orders/${order.orderId}`}>ดูรายละเอียด</Link></Button>
             </article>
           ))}
           {!orders.length && (
@@ -74,7 +61,6 @@ export function CustomerOrders({ accountName }) {
           )}
         </div>
       )}
-      </>}
     </AnimatedContent>
   );
 }

@@ -1,27 +1,32 @@
 import React, { useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase.js';
 
-export function AppShell({ session, view, setView, children }) {
+export function AppShell({ session, children }) {
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const changeView = (nextView) => {
-    setView(nextView);
-    setNavigationOpen(false);
-  };
+  const navigate = useNavigate();
+  const closeNavigation = () => setNavigationOpen(false);
+  const navClass = ({ isActive }) => (isActive ? 'active' : '');
+  async function logOut() {
+    // Start the next account at its own home page instead of this account's last URL.
+    navigate('/', { replace: true });
+    await signOut(auth);
+  }
   return (
     <div className={`app-shell ${navigationOpen ? 'navigation-open' : ''}`}>
-      <button className="nav-scrim" aria-label="ปิดเมนู" onClick={() => setNavigationOpen(false)} />
+      <button className="nav-scrim" aria-label="ปิดเมนู" onClick={closeNavigation} />
       <nav id="main-navigation" className="sidebar" aria-label="เมนูหลัก">
-        <a className="brand" href="#catalog" onClick={() => changeView('catalog')}>
+        <Link className="brand" to="/" onClick={closeNavigation}>
           <span>◈</span> WHOLESALE<br />CONTROL DESK
-        </a>
+        </Link>
         <div className="nav-group">
-          <button onClick={() => changeView('catalog')} className={view === 'catalog' ? 'active' : ''}>▦ สินค้า</button>
+          <NavLink to="/catalog" className={navClass} onClick={closeNavigation}>▦ สินค้า</NavLink>
           {session.role === 'customer' && (
-            <button onClick={() => changeView('orders')} className={view === 'orders' ? 'active' : ''}>▤ คำสั่งซื้อของฉัน</button>
+            <NavLink to="/orders" className={navClass} onClick={closeNavigation}>▤ คำสั่งซื้อของฉัน</NavLink>
           )}
           {session.role === 'admin' && (
-            <button onClick={() => changeView('admin')} className={view === 'admin' ? 'active' : ''}>▣ Admin Queue</button>
+            <NavLink to="/admin" className={navClass} onClick={closeNavigation}>▣ Admin Queue</NavLink>
           )}
         </div>
         <div className="nav-foot">ต้องการความช่วยเหลือ?<br /><b>ติดต่อทีมงาน</b></div>
@@ -35,7 +40,7 @@ export function AppShell({ session, view, setView, children }) {
               <b>{session.name}</b>
               <small>{session.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ลูกค้าขายส่ง'}</small>
             </span>
-            <button className="text-button" onClick={() => signOut(auth)}>ออกจากระบบ</button>
+            <button className="text-button" onClick={logOut}>ออกจากระบบ</button>
           </div>
         </header>
         {children}

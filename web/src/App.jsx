@@ -1,17 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Navigate, Route, Routes } from 'react-router';
 import { onIdTokenChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from './firebase.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { AdminQueue } from './pages/AdminQueue.jsx';
 import { Catalog } from './pages/Catalog.jsx';
+import { CustomerOrderPage } from './pages/CustomerOrderPage.jsx';
 import { CustomerOrders } from './pages/CustomerOrders.jsx';
 import { Login } from './pages/Login.jsx';
 
 export function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [view, setView] = useState('catalog');
-  const identityRef = useRef('');
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -20,7 +20,6 @@ export function App() {
     }
     return onIdTokenChanged(auth, async (user) => {
       if (!user) {
-        identityRef.current = '';
         setSession(null);
         setAuthLoading(false);
         return;
@@ -28,12 +27,6 @@ export function App() {
       const token = await user.getIdTokenResult();
       const role = token.claims.role === 'admin' ? 'admin' : 'customer';
       setSession({ uid: user.uid, name: user.displayName || user.email, email: user.email, role });
-      // Firebase refreshes the token hourly; only pick a start page when the account or role changes.
-      const identity = `${user.uid}:${role}`;
-      if (identityRef.current !== identity) {
-        identityRef.current = identity;
-        setView(role === 'admin' ? 'admin' : 'catalog');
-      }
       setAuthLoading(false);
     });
   }, []);
@@ -58,11 +51,18 @@ export function App() {
   }
   if (!session) return <Login />;
 
+  const home = session.role === 'admin' ? '/admin' : '/catalog';
   return (
-    <AppShell key={session.uid} session={session} view={view} setView={setView}>
-      {view === 'catalog' && <Catalog session={session} />}
-      {view === 'orders' && session.role === 'customer' && <CustomerOrders accountName={session.name} />}
-      {view === 'admin' && session.role === 'admin' && <AdminQueue adminName={session.name} adminId={session.uid} />}
+    <AppShell key={session.uid} session={session}>
+      <Routes>
+        <Route path="/" element={<Navigate to={home} replace />} />
+        <Route path="/catalog" element={<Catalog session={session} />} />
+        {session.role === 'customer' && <Route path="/orders" element={<CustomerOrders accountName={session.name} />} />}
+        {session.role === 'customer' && <Route path="/orders/:orderId" element={<CustomerOrderPage />} />}
+        {/* One route for the queue and its detail so selecting an order does not remount the queue. */}
+        {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminName={session.name} adminId={session.uid} />} />}
+        <Route path="*" element={<Navigate to={home} replace />} />
+      </Routes>
     </AppShell>
   );
 }

@@ -1,4 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
+import { createBarcodeDetector } from '../../lib/barcodeDetector.js';
+import { Dialog, DialogClose, DialogTitle } from '@/components/ui/dialog';
+
+// The WebAssembly fallback is heavier than the native detector; ~7 frames a second is plenty for a barcode.
+const SCAN_INTERVAL_MS = 150;
 
 export function Scanner({ onResult, onClose }) {
   const videoRef = useRef(null);
@@ -23,58 +29,61 @@ export function Scanner({ onResult, onClose }) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-        if (!('BarcodeDetector' in window)) {
-          setState('เบราว์เซอร์นี้ไม่รองรับการอ่านบาร์โค้ดอัตโนมัติ กรุณากรอกรหัสด้านล่าง');
-          return;
-        }
-        const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e'] });
-        setState('วางบาร์โค้ดให้อยู่ในกรอบ');
-        const scan = async () => {
-          if (stopped || !videoRef.current) return;
-          try {
-            const found = await detector.detect(videoRef.current);
-            if (found[0]?.rawValue && !stopped) {
-              stopped = true;
-              onResultRef.current(found[0].rawValue);
-              return;
-            }
-          } catch {
-            // A frame can fail while the video is still warming up; try the next one.
-          }
-          if (!stopped) timerRef.current = requestAnimationFrame(scan);
-        };
-        timerRef.current = requestAnimationFrame(scan);
       } catch {
         if (!stopped) setState('ไม่สามารถใช้กล้องได้ กรุณาอนุญาตกล้องหรือกรอกรหัสด้านล่าง');
+        return;
       }
+      let detector;
+      try {
+        setState('กำลังเตรียมตัวอ่านบาร์โค้ด…');
+        detector = await createBarcodeDetector();
+      } catch {
+        if (!stopped) setState('อ่านบาร์โค้ดอัตโนมัติไม่ได้บนอุปกรณ์นี้ กรุณากรอกรหัสด้านล่าง');
+        return;
+      }
+      if (stopped) return;
+      setState('วางบาร์โค้ดให้อยู่ในกรอบ');
+      const scan = async () => {
+        if (stopped || !videoRef.current) return;
+        try {
+          const found = await detector.detect(videoRef.current);
+          if (found[0]?.rawValue && !stopped) {
+            stopped = true;
+            onResultRef.current(found[0].rawValue);
+            return;
+          }
+        } catch {
+          // A frame can fail while the video is still warming up; try the next one.
+        }
+        if (!stopped) timerRef.current = setTimeout(scan, SCAN_INTERVAL_MS);
+      };
+      scan();
     }
     start();
     return () => {
       stopped = true;
-      if (timerRef.current) cancelAnimationFrame(timerRef.current);
+      clearTimeout(timerRef.current);
       stream?.getTracks().forEach(track => track.stop());
     };
   }, []);
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="scanner" role="dialog" aria-modal="true" aria-labelledby="scanner-title">
-        <button className="close" onClick={onClose} aria-label="ปิดหน้าสแกน">×</button>
-        <p className="eyebrow">MOBILE SCAN</p>
-        <h2 id="scanner-title">สแกนบาร์โค้ดสินค้า</h2>
-        <div className="camera">
-          <video ref={videoRef} muted playsInline />
-          <div className="scan-line" />
+    <Dialog className="scanner" labelledBy="scanner-title" onClose={onClose}>
+      <DialogClose className="close" aria-label="ปิดหน้าสแกน"><X aria-hidden="true" /></DialogClose>
+      <p className="eyebrow">MOBILE SCAN</p>
+      <DialogTitle id="scanner-title">สแกนบาร์โค้ดสินค้า</DialogTitle>
+      <div className="camera">
+        <video ref={videoRef} muted playsInline />
+        <div className="scan-line" />
+      </div>
+      <p className="scanner-state" role="status">{state}</p>
+      <form onSubmit={event => { event.preventDefault(); if (manual.trim()) onResult(manual.trim()); }}>
+        <label htmlFor="barcode">หรือกรอกรหัสบาร์โค้ด / SKU</label>
+        <div className="manual-scan">
+          <input id="barcode" value={manual} onChange={e => setManual(e.target.value)} placeholder="เช่น 8859816300611" autoComplete="off" />
+          <button className="secondary">ค้นหา</button>
         </div>
-        <p className="scanner-state">{state}</p>
-        <form onSubmit={event => { event.preventDefault(); if (manual.trim()) onResult(manual.trim()); }}>
-          <label htmlFor="barcode">หรือกรอกรหัสบาร์โค้ด / SKU</label>
-          <div className="manual-scan">
-            <input id="barcode" value={manual} onChange={e => setManual(e.target.value)} placeholder="เช่น 8859816300611" autoFocus />
-            <button className="secondary">ค้นหา</button>
-          </div>
-        </form>
-      </section>
-    </div>
+      </form>
+    </Dialog>
   );
 }

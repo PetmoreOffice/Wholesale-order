@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useMatch, useNavigate } from 'react-router';
 import { apiFetch, apiUrl } from '../api/client.js';
 import { adminActions, messageRequired, statusText } from '../lib/orderStatus.js';
 import { OrderMessages } from '../components/OrderMessages.jsx';
@@ -13,6 +14,12 @@ export function AdminQueue({ adminName, adminId }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  const match = useMatch('/admin/orders/:orderId');
+  const selectedId = match ? Number.parseInt(match.params.orderId, 10) : null;
+  // Ignore detail responses that arrive after the admin has already opened another order.
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
 
   async function load() {
     try {
@@ -31,17 +38,29 @@ export function AdminQueue({ adminName, adminId }) {
     return () => clearInterval(timer);
   }, []);
 
-  async function choose(order) {
-    setSelected(order);
+  async function loadDetail(orderId) {
+    try {
+      const response = await apiFetch(`${apiUrl}/orders/${orderId}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      if (selectedIdRef.current !== orderId) return;
+      setDetail(data.data);
+      setSelected(data.data);
+    } catch (err) {
+      if (selectedIdRef.current === orderId) setError(err.message || 'โหลดรายละเอียดไม่สำเร็จ');
+    }
+  }
+
+  useEffect(() => {
     setDetail(null);
     setMessage('');
-    try {
-    const response = await apiFetch(`${apiUrl}/orders/${order.orderId}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-    setDetail(data.data);
-    setSelected(data.data);
-    } catch (err) { setError(err.message || 'โหลดรายละเอียดไม่สำเร็จ'); }
+    setError('');
+    setSelected(selectedId ? orders.find(order => order.orderId === selectedId) || null : null);
+    if (selectedId) loadDetail(selectedId);
+  }, [selectedId]);
+
+  function choose(order) {
+    navigate(`/admin/orders/${order.orderId}`);
   }
 
   async function claim() {
@@ -60,7 +79,7 @@ export function AdminQueue({ adminName, adminId }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
       setSelected(current => ({ ...current, assignedAdminName: data.data.assignedAdminName, status: data.data.status }));
-      await choose({ ...selected, assignedAdminName: data.data.assignedAdminName, status: data.data.status });
+      await loadDetail(selected.orderId);
       await load();
     } catch (err) {
       setError(err.message || 'รับ Order ไม่สำเร็จ');
@@ -89,7 +108,7 @@ export function AdminQueue({ adminName, adminId }) {
       if (!response.ok) throw new Error(data.message);
       setSelected(current => ({ ...current, status: data.data.status }));
       setMessage('');
-      await choose({ ...selected, status: data.data.status });
+      await loadDetail(selected.orderId);
       await load();
     } catch (err) {
       setError(err.message || 'อัปเดตสถานะไม่สำเร็จ');
@@ -106,7 +125,7 @@ export function AdminQueue({ adminName, adminId }) {
       <div className="queue-layout">
         <div className="queue-list">
           {orders.map(order => (
-            <button disabled={busy} className={selected?.orderId === order.orderId ? 'queue-item selected' : 'queue-item'} key={order.orderId} onClick={() => choose(order)}>
+            <button disabled={busy} className={selectedId === order.orderId ? 'queue-item selected' : 'queue-item'} key={order.orderId} onClick={() => choose(order)}>
               <Badge variant="secondary" className={`status ${order.status}`}>{statusText[order.status] || order.status}</Badge>
               <b>{order.orderNumber}</b>
               <small>{order.customerName} · {order.itemCount} รายการ {order.assignedAdminName ? `· รับงานโดย ${order.assignedAdminName}` : '· ยังไม่มีผู้รับงาน'}</small>
@@ -154,7 +173,7 @@ export function AdminQueue({ adminName, adminId }) {
               </div>
             </>
           ) : (
-            <p className="empty-copy">เลือกคำสั่งซื้อจากคิวเพื่อดูรายละเอียดและจัดการงาน</p>
+            <p className="empty-copy">{selectedId ? 'กำลังโหลดรายละเอียดคำสั่งซื้อ…' : 'เลือกคำสั่งซื้อจากคิวเพื่อดูรายละเอียดและจัดการงาน'}</p>
           )}
         </aside>
       </div>
