@@ -224,7 +224,8 @@
   .type-tabs button:hover { border-color: var(--green-800); }
   .type-tabs button[aria-pressed="true"] { border-color: var(--green-800); background: var(--green-800); color: #fff; }
 
-  .catalog { overflow: hidden; }
+  /* scroll-margin clears the sticky topbar when paging scrolls the list into view. */
+  .catalog { overflow: hidden; scroll-margin-top: calc(var(--topbar-height) + 16px); }
   .catalog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); color: var(--ink-3); font-size: 14px; }
   .catalog-head b { color: var(--ink); }
   .catalog-columns, .product-row { display: grid; grid-template-columns: minmax(0, 1fr) 80px 128px 128px; gap: 16px; align-items: center; padding: 0 20px; }

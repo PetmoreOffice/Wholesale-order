@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ScanBarcode, Search, X } from 'lucide-react';
 import { apiFetch, apiUrl } from '../api/client.js';
@@ -45,6 +45,17 @@ export function Catalog({ session }) {
   const [department, setDepartment] = useState('');
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
+  const listRef = useRef(null);
+
+  // Pagination buttons sit under the list: bring the new page's first product into view.
+  function goToPage(nextPage) {
+    setPage(nextPage);
+    const list = listRef.current;
+    if (list && list.getBoundingClientRect().top < 0) {
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      list.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
+    }
+  }
   const [totalPages, setTotalPages] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [cart, setCart] = useState(() => readCart(session.uid));
@@ -162,7 +173,7 @@ export function Catalog({ session }) {
               <button type="button" className="icon-button" onClick={() => setScanNotice('')} aria-label="ปิดข้อความ"><X aria-hidden="true" /></button>
             </div>
           )}
-          <section className="panel catalog" aria-live="polite" aria-busy={loading}>
+          <section ref={listRef} className="panel catalog" aria-live="polite" aria-busy={loading}>
             <div className="catalog-head">
               <span>
                 {loading ? 'กำลังโหลดสินค้า…' : totalProducts ? <><b className="num">{count.format(totalProducts)}</b> รายการ{submittedQuery && <> ที่ตรงกับ “{submittedQuery}”</>} · หน้า <span className="num">{page}</span>/<span className="num">{totalPages}</span></> : 'ไม่พบสินค้า'}
@@ -183,13 +194,13 @@ export function Catalog({ session }) {
                 {products.map(product => <ProductRow key={`${product.goodsId}-${product.unitId || ''}`} product={product} inCart={inCart.get(product.goodsId) || 0} onAdd={add} />)}
                 {totalPages > 1 && (
                   <nav className="catalog-pagination" aria-label="เปลี่ยนหน้าสินค้า">
-                    <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(current => current - 1)}>ก่อนหน้า</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={page === 1} onClick={() => goToPage(page - 1)}>ก่อนหน้า</Button>
                     <div className="pagination-pages">
                       {visiblePages(page, totalPages).map(value => typeof value === 'string'
                         ? <span key={value} aria-hidden="true">…</span>
-                        : <Button type="button" key={value} variant={value === page ? 'default' : 'ghost'} size="sm" className="num" aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)}>{value}</Button>)}
+                        : <Button type="button" key={value} variant={value === page ? 'default' : 'ghost'} size="sm" className="num" aria-current={value === page ? 'page' : undefined} onClick={() => goToPage(value)}>{value}</Button>)}
                     </div>
-                    <Button type="button" variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)}>ถัดไป</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>ถัดไป</Button>
                   </nav>
                 )}
               </>
