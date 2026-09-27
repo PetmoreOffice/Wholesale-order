@@ -1,0 +1,5 @@
+# Windows scripts must keep CRLF line endings on every checkout (cmd labels/goto can
+# misbehave with LF), whatever core.autocrlf is set to on the server.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
