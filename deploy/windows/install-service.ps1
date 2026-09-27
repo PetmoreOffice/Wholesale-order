@@ -21,6 +21,7 @@ $api = Join-Path $repo 'api'
 $logs = Join-Path $api 'logs'
 
 if (-not (Test-Path $Nssm)) { throw "NSSM not found at $Nssm" }
+if (Get-ScheduledTask -TaskName $ServiceName -ErrorAction SilentlyContinue) { throw "A scheduled task named $ServiceName already exists (install-task.ps1). Use one runner only." }
 if (-not (Test-Path (Join-Path $api '.env'))) { throw "Missing $api\.env - copy it from the development machine first." }
 if (-not (Test-Path (Join-Path $repo 'web\dist\index.html'))) { throw 'The website is not built yet. Run deploy\windows\update.ps1 -SkipPull first.' }
 $inUse = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue

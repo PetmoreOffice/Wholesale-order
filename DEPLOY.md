@@ -1,9 +1,9 @@
 # Deploy บน Windows Server
 
-ระบบรันเป็น **Windows service ตัวเดียว** (Node.js) ที่ให้บริการทั้งหน้าเว็บและ API ส่วน **IIS** อยู่ด้านหน้าเพื่อทำ HTTPS
+ระบบรันเป็น **Node.js process ตัวเดียว** (เปิดโดย Task Scheduler) ที่ให้บริการทั้งหน้าเว็บและ API ส่วน **IIS** อยู่ด้านหน้าเพื่อทำ HTTPS
 
 ```
-ผู้ใช้ ──HTTPS──▶ IIS (ใบรับรอง, port 443) ──▶ Node service 127.0.0.1:3005 ──▶ SQL Server (SELECT เท่านั้น)
+ผู้ใช้ ──HTTPS──▶ IIS (ใบรับรอง, port 443) ──▶ Node 127.0.0.1:3005 ─────────▶ SQL Server (SELECT เท่านั้น)
                                               ├─ หน้าเว็บ (web/dist)          └─ Firebase Auth
                                               └─ ข้อมูล Order (api/data)
 ```
@@ -17,8 +17,7 @@
 1. ติดตั้ง **Node.js 24 LTS** และ **Git for Windows** (รอบแก้นี้ทดสอบด้วย Node 24.15.0) ตรวจสถานะรุ่นจาก [Node.js releases](https://nodejs.org/en/about/previous-releases)
 2. ติดตั้ง **IIS** พร้อมโมดูล **URL Rewrite** และ **Application Request Routing (ARR)**
    แล้วเปิด proxy: IIS Manager → คลิกชื่อ server → *Application Request Routing Cache* → *Server Proxy Settings* → ติ๊ก **Enable proxy** → Apply
-3. ดาวน์โหลด **NSSM** (https://nssm.cc) แตกไฟล์ไว้ เช่น `C:\Tools\nssm\win64\nssm.exe`
-4. ตรวจว่าเครื่องนี้ต่อ SQL Server ได้ (port 1433 / firewall) และ login SQL ที่ใช้ควรมีสิทธิ์ **db_datareader เท่านั้น**
+3. ตรวจว่าเครื่องนี้ต่อ SQL Server ได้ (port 1433 / firewall) และ login SQL ที่ใช้ควรมีสิทธิ์ **db_datareader เท่านั้น**
 
 ## 2. ดึงโค้ด
 
@@ -48,12 +47,12 @@ CLIENT_ORIGIN=https://order.yourcompany.co.th
 ORDER_ARCHIVE_DAYS=365
 ```
 
-`NODE_ENV=production`, `HOST=127.0.0.1` และ `PORT=3005` ถูกตั้งให้โดย service อยู่แล้ว (port 3000 และ 3001 บน server ถูกโปรเจคอื่นใช้อยู่)
+`NODE_ENV=production`, `HOST=127.0.0.1` และ `PORT=3005` ถูกตั้งให้โดยสคริปต์ติดตั้งอยู่แล้ว (port 3000 และ 3001 บน server ถูกโปรเจคอื่นใช้อยู่)
 
-> ถ้าต้องเปลี่ยน port: ใช้ `install-service.ps1 -Port <เลข>` และแก้เลขเดียวกันใน `deploy\windows\iis\web.config`
-> ตรวจ `node -v` และผลต่อโปรเจกต์อื่นก่อนเปลี่ยน Node ของเครื่อง หากใช้ Node แยกตำแหน่ง ให้ระบุ `install-service.ps1 -Node "C:\path\to\node.exe"` และใช้ Node รุ่นเดียวกันตอน build/test
+> ถ้าต้องเปลี่ยน port: ใช้ `install-task.ps1 -Port <เลข>` และแก้เลขเดียวกันใน `deploy\windows\iis\web.config`
+> ตรวจ `node -v` และผลต่อโปรเจกต์อื่นก่อนเปลี่ยน Node ของเครื่อง หากใช้ Node แยกตำแหน่ง ให้ระบุ `install-task.ps1 -Node "C:\path\to\node.exe"` และใช้ Node รุ่นเดียวกันตอน build/test
 
-## 4. Build และติดตั้ง service
+## 4. Build และตั้งให้รันตลอด (Task Scheduler)
 
 เปิด **PowerShell แบบ Run as administrator**:
 
@@ -61,11 +60,35 @@ ORDER_ARCHIVE_DAYS=365
 cd C:\apps\Wholesale-order
 Set-ExecutionPolicy -Scope Process Bypass
 .\deploy\windows\update.ps1 -SkipPull
-.\deploy\windows\install-service.ps1 -Nssm "C:\Tools\nssm\win64\nssm.exe"
+.\deploy\windows\install-task.ps1
 ```
 
-สคริปต์จะติดตั้ง package, ตรวจ SQL read-only guard, build หน้าเว็บ, สร้าง service ชื่อ **WholesaleOrder** (เริ่มเองตอนเปิดเครื่อง และเปิดใหม่เองถ้าล่ม) แล้วเช็ค `/api/health`
-Log อยู่ที่ `api\logs\`
+`update.ps1` ติดตั้ง package, ตรวจ SQL read-only guard, ตรวจไฟล์ Order, รัน test และ build หน้าเว็บ
+`install-task.ps1` สร้าง task ชื่อ **WholesaleOrder** ใน Task Scheduler (ไม่ต้องลงโปรแกรมเพิ่ม):
+
+- เริ่มเองตอนเปิดเครื่อง ด้วยบัญชี SYSTEM โดยไม่ต้องมีใคร login
+- ไม่มีการตัดเวลา (ค่าเริ่มต้นของ Task Scheduler จะหยุด task หลัง 3 วัน — สคริปต์ปิดไว้แล้ว)
+- ถ้า Node หยุด/ล่ม `start-app.cmd` จะเปิดใหม่ภายใน 10 วินาที
+- Log: `api\logs\app.log` (เก็บไฟล์ก่อนหน้าไว้ 1 ไฟล์เมื่อเกิน 10 MB)
+
+คำสั่งที่ใช้บ่อย:
+
+```powershell
+Get-ScheduledTask WholesaleOrder | Select-Object TaskName, State
+Start-ScheduledTask WholesaleOrder
+Get-Content C:\apps\Wholesale-order\api\logs\app.log -Tail 50
+```
+
+การหยุดแอปให้ใช้ `update.ps1` หรือคำสั่งด้านล่าง — `Stop-ScheduledTask` อย่างเดียวอาจเหลือ Node ค้าง ตัวช่วยนี้หยุดเฉพาะ process ที่รัน `api\src\server.js` ของโปรเจคนี้ (Node ของโปรเจคอื่นไม่ถูกแตะ):
+
+```powershell
+. .\deploy\windows\app-control.ps1
+Stop-App WholesaleOrder (Resolve-Path .\api).Path
+```
+
+> **ทางเลือก: Windows service ด้วย NSSM** — ถ้าต้องการให้ขึ้นในหน้า Services ของ Windows ดาวน์โหลด NSSM (https://nssm.cc) แล้วใช้
+> `.\deploy\windows\install-service.ps1 -Nssm "C:\Tools\nssm-2.24\win64\nssm.exe"` แทน `install-task.ps1` (log อยู่ที่ `api\logs\service*.log`)
+> ใช้ **อย่างใดอย่างหนึ่ง** เท่านั้น ห้ามติดตั้งทั้งสองแบบพร้อมกัน
 
 ## 5. ตั้ง IIS (HTTPS)
 
@@ -115,7 +138,8 @@ cd C:\apps\Wholesale-order
 cd C:\apps\Wholesale-order
 git status --short
 git rev-parse HEAD
-Stop-Service WholesaleOrder
+. .\deploy\windows\app-control.ps1
+Stop-App WholesaleOrder (Resolve-Path .\api).Path
 $releaseBackup = "C:\backups\WholesaleOrder\$(Get-Date -Format 'yyyy-MM-dd-HHmmss')"
 New-Item -ItemType Directory -Path $releaseBackup -Force | Out-Null
 Copy-Item -LiteralPath .\api\data -Destination $releaseBackup -Recurse
@@ -129,7 +153,7 @@ git rev-parse HEAD | Set-Content (Join-Path $releaseBackup 'commit.txt')
 
 ```powershell
 .\deploy\windows\update.ps1
-Get-Service WholesaleOrder
+Get-ScheduledTask WholesaleOrder | Select-Object TaskName, State
 Invoke-RestMethod http://127.0.0.1:3005/api/health
 ```
 
@@ -142,11 +166,14 @@ Invoke-RestMethod http://127.0.0.1:3005/api/health
 หยุด service ก่อน สลับกลับ commit ที่บันทึกใน `commit.txt` และติดตั้ง dependencies/build ของ commit นั้นใหม่ โดยตรวจว่าไม่มีไฟล์แก้ไขค้างก่อน switch:
 
 ```powershell
-Stop-Service WholesaleOrder
+. .\deploy\windows\app-control.ps1
+Stop-App WholesaleOrder (Resolve-Path .\api).Path
 $previousCommit = (Get-Content (Join-Path $releaseBackup 'commit.txt')).Trim()
 git switch --detach $previousCommit
 .\deploy\windows\update.ps1 -SkipPull
-Get-Service WholesaleOrder
+# commit เก่าที่ยังไม่รู้จัก Task Scheduler จะไม่เปิดแอปให้ — เปิดเองด้วยบรรทัดนี้
+Start-ScheduledTask WholesaleOrder
+Get-ScheduledTask WholesaleOrder | Select-Object TaskName, State
 Invoke-RestMethod http://127.0.0.1:3005/api/health
 ```
 
@@ -158,7 +185,7 @@ Invoke-RestMethod http://127.0.0.1:3005/api/health
 
 | อาการ | ตรวจ |
 |---|---|
-| หน้าเว็บขึ้น 502 | service ไม่ทำงาน: `Get-Service WholesaleOrder` และดู `api\logs\service-error.log` |
+| หน้าเว็บขึ้น 502 | แอปไม่ทำงาน: `Get-ScheduledTask WholesaleOrder` และดู `api\logs\app.log` (ถ้าใช้ NSSM: `Get-Service WholesaleOrder` และ `api\logs\service-error.log`) |
 | เข้าสู่ระบบไม่ได้ / auth/unauthorized-domain | ยังไม่ได้เพิ่ม domain ใน Firebase Authorized domains |
 | ปุ่มสแกนเปิดกล้องไม่ได้ | เปิดผ่าน http หรือ IP แทน https |
 | สินค้าไม่ขึ้น | `Invoke-RestMethod http://127.0.0.1:3005/api/health` — ถ้า `database: unavailable` ตรวจค่า SQL ใน `api\.env` และ firewall |
