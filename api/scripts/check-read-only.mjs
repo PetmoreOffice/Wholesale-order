@@ -6,6 +6,9 @@ const allowed = [
   'SELECT 1',
   `SELECT ${catalogFields} ${productJoins} WHERE ${sellableOnly}`,
   `SELECT ${orderItemFields} ${orderItemJoins} WHERE ${sellableOnly} AND g.GOODS_KEY = @goodsId`,
+  // Batched order-line lookup (orders.js sellableProducts).
+  `SELECT ${orderItemFields} ${orderItemJoins} WHERE ${sellableOnly} AND g.GOODS_KEY IN (@goods0, @goods1, @goods2)`,
+  `SELECT ${catalogFields} ${productJoins} WHERE ${sellableOnly} AND g.GOODS_KEY IN (@goods0)`,
   `SELECT COUNT(*) AS total ${productJoins} WHERE ${sellableOnly}`,
   // SQL Server catalog paging (products.js) must keep working.
   `SELECT ${catalogFields} ${productJoins} WHERE ${sellableOnly} ORDER BY name, goodsId OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,

@@ -48,7 +48,7 @@ export function NotificationBell({ role }) {
     setOpen(nextOpen);
     if (nextOpen && feed.unreadCount) {
       setFeed(current => ({ ...current, unreadCount: 0 }));
-      try { await markNotificationsRead(); } catch { /* the badge returns on the next poll */ }
+      try { await markNotificationsRead(feed.data[0]?.createdAt); } catch { /* the badge returns on the next poll */ }
     }
     if (!nextOpen) setFeed(current => ({ ...current, data: current.data.map(event => ({ ...event, unread: false })) }));
   }

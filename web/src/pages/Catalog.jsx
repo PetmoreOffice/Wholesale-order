@@ -51,6 +51,8 @@ export function Catalog({ session }) {
   const listRef = useRef(null);
   // Every catalog request gets a number; only the newest one may update the list.
   const requestRef = useRef(0);
+  const categoryKey = JSON.stringify([category.g, category.d, category.s]);
+  const loadedCategory = useRef(categoryKey);
   // While a scan result is shown, the page reset it causes must not reload the catalog over it.
   const [scanMode, setScanMode] = useState(false);
 
@@ -109,8 +111,18 @@ export function Catalog({ session }) {
   }
 
   useEffect(() => {
+    // Browser Back/Forward changes the URL without going through chooseCategory.
+    if (loadedCategory.current !== categoryKey) {
+      loadedCategory.current = categoryKey;
+      setPage(1);
+      setTotalPages(0);
+      setTotalProducts(0);
+      setScanMode(false);
+      if (page !== 1 || scanMode) return;
+    }
     if (scanMode) return;
     loadProducts();
+    return () => { requestRef.current += 1; };
   }, [submittedQuery, category.g, category.d, category.s, retry, page, scanMode]);
 
   useEffect(() => {

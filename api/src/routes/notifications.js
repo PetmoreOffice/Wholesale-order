@@ -49,7 +49,11 @@ notificationsRouter.get('/', async (req, res, next) => {
 
 notificationsRouter.post('/read', async (req, res, next) => {
   try {
-    const readAt = new Date().toISOString();
+    // Mark read up to the newest event the panel showed, not "now": an event created
+    // between loading the feed and opening it must stay unread.
+    const now = Date.now();
+    const seen = Date.parse(req.body?.until);
+    const readAt = new Date(Number.isFinite(seen) && seen <= now ? seen : now).toISOString();
     await changeStore((store) => { store.notificationReads[req.user.uid] = readAt; });
     return res.json({ data: { readAt } });
   } catch (error) { return next(error); }

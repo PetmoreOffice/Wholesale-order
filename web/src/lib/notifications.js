@@ -32,6 +32,7 @@ export async function fetchNotifications() {
   return data;
 }
 
-export async function markNotificationsRead() {
-  await apiFetch(`${apiUrl}/notifications/read`, { method: 'POST' });
+// `until`: time of the newest event the user has seen; later events stay unread.
+export async function markNotificationsRead(until) {
+  await apiFetch(`${apiUrl}/notifications/read`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ until }) });
 }

@@ -10,9 +10,11 @@
 
 > HTTPS จำเป็น: browser เปิดกล้องสแกนบาร์โค้ดให้เฉพาะเว็บ HTTPS และ Firebase ต้องรู้จัก domain ของเว็บ
 
+> รัน Node เพียง **1 process / 1 instance** เท่านั้น ห้ามเปิด dev server ของ API, PM2 cluster หรือ service อีกตัวชี้ `api/data` เดียวกัน เพราะ write queue และ lock การเปลี่ยนสิทธิ์ผู้ใช้ทำงานภายใน process
+
 ## 1. เตรียมเครื่อง (ครั้งเดียว)
 
-1. ติดตั้ง **Node.js LTS** (https://nodejs.org) และ **Git for Windows**
+1. ติดตั้ง **Node.js 24 LTS** และ **Git for Windows** (รอบแก้นี้ทดสอบด้วย Node 24.15.0) ตรวจสถานะรุ่นจาก [Node.js releases](https://nodejs.org/en/about/previous-releases)
 2. ติดตั้ง **IIS** พร้อมโมดูล **URL Rewrite** และ **Application Request Routing (ARR)**
    แล้วเปิด proxy: IIS Manager → คลิกชื่อ server → *Application Request Routing Cache* → *Server Proxy Settings* → ติ๊ก **Enable proxy** → Apply
 3. ดาวน์โหลด **NSSM** (https://nssm.cc) แตกไฟล์ไว้ เช่น `C:\Tools\nssm\win64\nssm.exe`
@@ -48,8 +50,8 @@ ORDER_ARCHIVE_DAYS=365
 
 `NODE_ENV=production`, `HOST=127.0.0.1` และ `PORT=3005` ถูกตั้งให้โดย service อยู่แล้ว (port 3000 และ 3001 บน server ถูกโปรเจคอื่นใช้อยู่)
 
-> ถ้าต้องเปลี่ยน port: ใช้ `install-service.ps1 -Port <เลข>` และแก้เลขเดียวกันใน `deploywindowsiisweb.config`
-> Node.js บน server ต้องเป็น **v22 ขึ้นไป** (`node -v`) — ถ้าต่ำกว่านั้น อย่าอัปเกรดทับจนกว่าจะเช็คว่าโปรเจคอื่นบนเครื่องใช้ v22 ได้
+> ถ้าต้องเปลี่ยน port: ใช้ `install-service.ps1 -Port <เลข>` และแก้เลขเดียวกันใน `deploy\windows\iis\web.config`
+> ตรวจ `node -v` และผลต่อโปรเจกต์อื่นก่อนเปลี่ยน Node ของเครื่อง หากใช้ Node แยกตำแหน่ง ให้ระบุ `install-service.ps1 -Node "C:\path\to\node.exe"` และใช้ Node รุ่นเดียวกันตอน build/test
 
 ## 4. Build และติดตั้ง service
 
@@ -102,6 +104,55 @@ cd C:\apps\Wholesale-order
 ```
 
 ระบบจะหยุดประมาณ 1 นาทีระหว่างติดตั้งและ build — `.env`, `secrets` และ `data` ไม่ถูกแตะ
+
+### อัปเดตรอบแก้ Audit นี้
+
+ไฟล์แก้ไขต้องถูก commit/push ไปยัง branch ที่ server ใช้งานก่อน `update.ps1` จึงจะ pull มาได้ หากส่งเป็น ZIP ให้แตกไปยังโฟลเดอร์ release ใหม่แล้วนำ `.env`, service-account key และข้อมูล server ปัจจุบันไปใช้ ห้ามนำ `api/data` จากเครื่องพัฒนาทับข้อมูล server
+
+ก่อนอัปเดต เปิด PowerShell แบบ Administrator ในโฟลเดอร์โปรเจกต์ ใช้ path ของ server จริงแทนตัวอย่าง:
+
+```powershell
+cd C:\apps\Wholesale-order
+git status --short
+git rev-parse HEAD
+Stop-Service WholesaleOrder
+$releaseBackup = "C:\backups\WholesaleOrder\$(Get-Date -Format 'yyyy-MM-dd-HHmmss')"
+New-Item -ItemType Directory -Path $releaseBackup -Force | Out-Null
+Copy-Item -LiteralPath .\api\data -Destination $releaseBackup -Recurse
+Copy-Item -LiteralPath .\web\dist -Destination $releaseBackup -Recurse
+git rev-parse HEAD | Set-Content (Join-Path $releaseBackup 'commit.txt')
+```
+
+หาก backup ไม่สำเร็จ ให้หยุดขั้นตอน deploy และเปิด service เดิมกลับก่อน แยกเก็บ `.env` และ key อย่างปลอดภัยด้วย โฟลเดอร์ backup ต้องจำกัดสิทธิ์เพราะมีข้อมูลลูกค้า
+
+เมื่อ backup สำเร็จ:
+
+```powershell
+.\deploy\windows\update.ps1
+Get-Service WholesaleOrder
+Invoke-RestMethod http://127.0.0.1:3005/api/health
+```
+
+สคริปต์ตรวจ read-only guard, schema ของ orders.json และ regression tests ที่ใช้ mock ก่อน build ถ้าขั้นตอนใดล้มเหลวอย่าถือว่า deploy สำเร็จ แม้ finally จะพยายามเปิด service กลับก็ตาม schema ที่ผิดจะถูกปฏิเสธเพื่อไม่ให้ข้อมูลถูกแทนด้วยค่าว่าง
+
+ทดสอบผ่าน HTTPS: เข้าสู่ระบบลูกค้า/แอดมิน, เปิดสินค้า, เปลี่ยนหมวดแล้วกด Back/Forward, ตรวจ Order เดิม และทดสอบบันทึกร่าง/ส่ง Order ด้วยบัญชีทดสอบที่กำหนดไว้ `/api/health` ยืนยันการเชื่อมต่อ DB แต่ไม่ได้ยืนยัน Firebase หรือทุก workflow
+
+### ย้อนกลับเมื่ออัปเดตไม่สำเร็จ
+
+หยุด service ก่อน สลับกลับ commit ที่บันทึกใน `commit.txt` และติดตั้ง dependencies/build ของ commit นั้นใหม่ โดยตรวจว่าไม่มีไฟล์แก้ไขค้างก่อน switch:
+
+```powershell
+Stop-Service WholesaleOrder
+$previousCommit = (Get-Content (Join-Path $releaseBackup 'commit.txt')).Trim()
+git switch --detach $previousCommit
+.\deploy\windows\update.ps1 -SkipPull
+Get-Service WholesaleOrder
+Invoke-RestMethod http://127.0.0.1:3005/api/health
+```
+
+คง `api/data` ปัจจุบันไว้เมื่อย้อนเฉพาะโค้ด เพราะการ restore backup จะทำให้ Order หลังเวลาสำรองหาย หากจำเป็นต้องกู้ข้อมูลจริง ให้เก็บสำเนาข้อมูลปัจจุบันก่อน แล้วกู้ทั้งชุด `data` รวม archive ขณะ service หยุดอยู่ หลังตรวจผลแล้วเลือก branch สำหรับอัปเดตครั้งถัดไปอีกครั้ง (สถานะ detached HEAD ใช้สำหรับ rollback)
+
+รายละเอียด reverse proxy อ้างอิง [Microsoft: URL Rewrite + ARR](https://learn.microsoft.com/en-us/iis/extensions/url-rewrite-module/reverse-proxy-with-url-rewrite-v2-and-application-request-routing)
 
 ## แก้ปัญหา
 

@@ -3,6 +3,7 @@ import { firebaseAuth } from '../config/firebase.js';
 import { forgetAccountStatus, requireAuth, requireRole, roles } from '../middleware/auth.js';
 import { changeStore, logActivity, readStore } from '../orders/store.js';
 import { forget, presenceOf } from '../users/presence.js';
+import { serializeUserMutation } from '../users/mutations.js';
 
 // Admin user management. Sign-in accounts live in this project's own Firebase Auth; the
 // customer profile is kept in the local JSON store. Nothing here touches SQL.
@@ -13,7 +14,6 @@ usersRouter.use(requireAuth, requireRole('admin'));
 export const profileRouter = Router();
 profileRouter.use(requireAuth);
 
-const MAX_USERS = 1000;
 const roleText = { admin: 'แอดมิน', customer: 'ลูกค้า' };
 
 function activity(req, action, target, detail) {
@@ -62,7 +62,7 @@ async function allUsers() {
     const page = await firebaseAuth().listUsers(1000, pageToken);
     users.push(...page.users);
     pageToken = page.pageToken;
-  } while (pageToken && users.length < MAX_USERS);
+  } while (pageToken);
   return users;
 }
 
@@ -123,7 +123,7 @@ usersRouter.post('/', async (req, res, next) => {
   } catch (error) { return handleUserError(res, next, error); }
 });
 
-usersRouter.patch('/:uid', async (req, res, next) => {
+usersRouter.patch('/:uid', serializeUserMutation(async (req, res, next) => {
   try {
     const { uid } = req.params;
     const current = await firebaseAuth().getUser(uid);
@@ -162,9 +162,9 @@ usersRouter.patch('/:uid', async (req, res, next) => {
     const [user, store] = await Promise.all([firebaseAuth().getUser(uid), readStore()]);
     return res.json({ data: userView(user, store.customers[uid]) });
   } catch (error) { return handleUserError(res, next, error); }
-});
+}));
 
-usersRouter.patch('/:uid/status', async (req, res, next) => {
+usersRouter.patch('/:uid/status', serializeUserMutation(async (req, res, next) => {
   try {
     const { uid } = req.params;
     if (typeof req.body.disabled !== 'boolean') return badRequest(res, 'ระบุสถานะการใช้งาน');
@@ -181,7 +181,7 @@ usersRouter.patch('/:uid/status', async (req, res, next) => {
     const [user, store] = await Promise.all([firebaseAuth().getUser(uid), readStore()]);
     return res.json({ data: userView(user, store.customers[uid]) });
   } catch (error) { return handleUserError(res, next, error); }
-});
+}));
 
 profileRouter.get('/', async (req, res, next) => {
   try {

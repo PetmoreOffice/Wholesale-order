@@ -40,6 +40,8 @@ if ($service -and $service.Status -eq 'Running') {
 try {
   Invoke-Step 'Install API packages' (Join-Path $repo 'api') { npm ci --omit=dev }
   Invoke-Step 'Check the SQL read-only guard' (Join-Path $repo 'api') { node scripts/check-read-only.mjs }
+  Invoke-Step 'Check local order data' (Join-Path $repo 'api') { node scripts/check-store.mjs }
+  Invoke-Step 'Run regression tests (mock data only)' (Join-Path $repo 'api') { npm test }
   Invoke-Step 'Install web packages' (Join-Path $repo 'web') { npm ci }
   # The site is served by the API on the same address, so it calls /api.
   $env:VITE_API_URL = '/api'

@@ -104,24 +104,41 @@ function checkItemList(items) {
   });
 }
 
+// One SELECT for all lines (bound parameters, at most MAX_ITEMS) instead of one per line:
+// submission runs inside the store's write queue, so this keeps every other save waiting
+// for a single round trip only. Returns sellable rows keyed by goodsId.
+async function sellableProducts(goodsIds, fields, joins) {
+  if (!goodsIds.length) return new Map();
+  const params = Object.fromEntries(goodsIds.map((goodsId, index) => ['goods' + index, goodsId]));
+  const placeholders = goodsIds.map((_, index) => '@goods' + index).join(', ');
+  const rows = await query(`SELECT ${fields} ${joins} WHERE ${sellableOnly} AND g.GOODS_KEY IN (${placeholders})`, params);
+  const products = new Map();
+  for (const row of rows) if (!products.has(Number(row.goodsId))) products.set(Number(row.goodsId), row);
+  return products;
+}
+
 async function resolveItems(items) {
-  const resolved = [];
-  for (const { goodsId, quantity } of checkItemList(items)) {
-    const rows = await query('SELECT ' + orderItemFields + ' ' + orderItemJoins + ' WHERE ' + sellableOnly + ' AND g.GOODS_KEY = @goodsId', { goodsId });
-    const product = rows[0];
+  const lines = checkItemList(items);
+  const products = await sellableProducts(lines.map((line) => line.goodsId), orderItemFields, orderItemJoins);
+  return lines.map(({ goodsId, quantity }) => {
+    const product = products.get(goodsId);
     if (!product) throw orderError('BAD_REQUEST', 'ไม่พบสินค้าที่พร้อมสั่งซื้อ: ' + goodsId);
     checkQuantity(product, quantity);
-    resolved.push({ itemId: randomUUID(), ...product, quantity });
-  }
-  return resolved;
+    return { itemId: randomUUID(), ...product, quantity };
+  });
 }
+
+// Order numbers carry the month in Thai time, so an order at 01:00 on the 1st is not
+// numbered with the previous month.
+const thaiMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' });
 
 // Customers see only their own workflow; admin-internal fields stay on the server.
 function customerView(order) {
   const { assignmentLog, assignedAdminId, createdById, ...visible } = order;
   return {
     ...visible,
-    history: (order.history || []).filter((entry) => entry.visibleToCustomer !== false),
+    // Admin account ids stay on the server; the name is enough for the customer.
+    history: (order.history || []).filter((entry) => entry.visibleToCustomer !== false).map(({ actorId, ...entry }) => entry),
     messages: (order.messages || []).filter((entry) => entry.visibleToCustomer !== false)
   };
 }
@@ -158,7 +175,7 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
     const order = await changeStore((store) => {
       const orderId = store.nextOrderId++;
       const now = new Date().toISOString();
-      const orderNumber = 'WO-' + new Date().toISOString().slice(0, 7).replace('-', '') + '-' + String(orderId).padStart(6, '0');
+      const orderNumber = 'WO-' + thaiMonth.format(new Date()).replace('-', '') + '-' + String(orderId).padStart(6, '0');
       const created = {
         orderId,
         orderNumber,
@@ -192,9 +209,13 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
 ordersRouter.post('/:orderId/submit', requireRole('customer'), async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
-    const result = await changeStore((store) => {
+    const result = await changeStore(async (store) => {
       const order = ownOrder(store, orderId, req.user);
       if (order.status !== 'draft') throw orderError('INVALID_STATUS', 'ส่งคำสั่งซื้อนี้ไปแล้วหรือไม่สามารถส่งได้');
+      // Keep validation and submission in the same queue as draft edits/deletion.
+      // A failed catalog lookup leaves the persisted draft unchanged.
+      const items = await resolveItems(order.items);
+      order.items = items.map(item => ({ ...item, itemId: order.items.find(old => old.goodsId === item.goodsId).itemId || item.itemId }));
       order.status = 'submitted';
       order.submittedAt = new Date().toISOString();
       order.updatedAt = order.submittedAt;
@@ -290,9 +311,9 @@ ordersRouter.get('/:orderId/reorder-items', requireRole('customer'), async (req,
     const items = [];
     const unavailable = [];
     const adjusted = [];
+    const products = await sellableProducts(order.items.map((line) => line.goodsId), catalogFields, productJoins);
     for (const line of order.items) {
-      const rows = await query(`SELECT ${catalogFields} ${productJoins} WHERE ${sellableOnly} AND g.GOODS_KEY = @goodsId`, { goodsId: line.goodsId });
-      const product = rows[0];
+      const product = products.get(line.goodsId);
       if (!product) {
         unavailable.push({ goodsId: line.goodsId, name: line.name });
         continue;

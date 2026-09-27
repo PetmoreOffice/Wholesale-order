@@ -24,7 +24,7 @@ if (-not (Test-Path $Nssm)) { throw "NSSM not found at $Nssm" }
 if (-not (Test-Path (Join-Path $api '.env'))) { throw "Missing $api\.env - copy it from the development machine first." }
 if (-not (Test-Path (Join-Path $repo 'web\dist\index.html'))) { throw 'The website is not built yet. Run deploy\windows\update.ps1 -SkipPull first.' }
 $inUse = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-if ($inUse) { throw "Port $Port is already used by process $($inUse[0].OwningProcess). Pick a free one with -Port and set the same port in deploywindowsiisweb.config." }
+if ($inUse) { throw "Port $Port is already used by process $($inUse[0].OwningProcess). Pick a free one with -Port and set the same port in deploy\windows\iis\web.config." }
 New-Item -ItemType Directory -Force $logs | Out-Null
 
 & $Nssm install $ServiceName $Node 'src\server.js'

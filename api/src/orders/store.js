@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeStore } from './schema.js';
 
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data');
 const dataFile = path.join(dataDir, 'orders.json');
@@ -52,36 +53,21 @@ export function orderSummary(order) {
   };
 }
 
-const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-
-function normalize(store) {
-  return {
-    nextOrderId: Number(store.nextOrderId || 1),
-    orders: Array.isArray(store.orders) ? store.orders : [],
-    // uid -> ISO time the user last opened their notifications.
-    notificationReads: isObject(store.notificationReads) ? store.notificationReads : {},
-    // uid -> customer profile (shop name, phone, delivery address, …). The Firebase account
-    // only holds sign-in data; everything about the business lives here, never in SQL.
-    customers: isObject(store.customers) ? store.customers : {},
-    activity: Array.isArray(store.activity) ? store.activity : []
-  };
-}
-
 export async function readStore() {
   let content;
   try {
     content = await fs.readFile(dataFile, 'utf8');
   } catch (error) {
-    if (error.code === 'ENOENT') return normalize({});
+    if (error.code === 'ENOENT') return normalizeStore({ nextOrderId: 1, orders: [] });
     throw new Error('ไม่สามารถอ่านไฟล์ Order ได้: ' + error.message);
   }
   try {
-    return normalize(JSON.parse(content));
+    return normalizeStore(JSON.parse(content));
   } catch {
     // Never overwrite a damaged file automatically: say which copy to restore instead.
     const [latest] = await listBackups().catch(() => []);
     const hint = latest ? `คัดลอก data/backups/${latest.name} ทับ data/orders.json เพื่อกู้คืน` : 'ไม่พบไฟล์สำรอง';
-    console.error(`orders.json is not valid JSON. ${latest ? `Restore from data/backups/${latest.name}.` : 'No backup found.'}`);
+    console.error(`orders.json has invalid JSON or schema. ${latest ? `Restore from data/backups/${latest.name}.` : 'No backup found.'}`);
     const error = new Error('ไฟล์ข้อมูล Order เสียหาย ' + hint);
     error.code = 'STORE_CORRUPT';
     throw error;
@@ -166,6 +152,7 @@ export async function changeStore(change) {
   return queued(async () => {
     const store = await readStore();
     const result = await change(store);
+    normalizeStore(store);
     // A failed backup must not block orders; it is logged and retried on the next write.
     await backupIfDue().catch((error) => console.error('Order backup failed:', error));
     await writeJson(dataFile, store);
@@ -207,10 +194,13 @@ export async function findArchivedOrder(orderId) {
   return null;
 }
 
-export function archiveOldOrders(olderThanDays) {
+export async function archiveOldOrders(olderThanDays) {
   const cutoff = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+  const due = (order) => closedStatuses.includes(order.status) && Date.parse(order.updatedAt) < cutoff;
+  // Checked outside the queue first so a start-up with nothing to archive writes nothing.
+  if (!(await readStore()).orders.some(due)) return 0;
   return changeStore(async (store) => {
-    const old = store.orders.filter((order) => closedStatuses.includes(order.status) && Date.parse(order.updatedAt) < cutoff);
+    const old = store.orders.filter(due);
     if (!old.length) return 0;
     const byYear = new Map();
     for (const order of old) {
