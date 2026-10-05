@@ -10,6 +10,12 @@
 
 ## Production
 
+Audit hardening (5 October 2026): deploy the API and rebuilt web together. `POST /api/orders/drafts` now requires a `requestId` (16–80 ASCII letters/digits/hyphens). Reuse it for retries with the same payload. The persistent `creationRequests` map deduplicates by actor UID and request ID, including across restarts. Different payloads with the same ID return 409; old browser tabs without an ID return 400 with a reload instruction. Keep this map when backing up/restoring `api/data`.
+
+Authenticated API requests are limited per UID in the single Node process: 240 reads/minute, 30 ordinary writes/minute, and 10 admin writes or backup/export downloads/minute. Excess requests return 429 with `Retry-After`. Limits reset on process restart and do not replace perimeter protection against unauthenticated floods. API responses use `Cache-Control: no-store`.
+
+Archive JSON now undergoes the same order validation as live data. A malformed archive stops archiving without overwriting it; restore a verified backup while the service is stopped instead of replacing it with an empty file.
+
 When `web/dist` exists (after `npm run build` in `web/`), the API also serves the website and answers browser routes such as `/settings` with the app, so one Node process runs everything. Unknown `/api/*` paths return a JSON 404. `HOST` sets the listen address (use `127.0.0.1` behind IIS) and `WEB_DIST` overrides the site folder. Windows Server steps are in [../DEPLOY.md](../DEPLOY.md).
 
 ## Authentication and roles

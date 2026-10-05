@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { auth } from '../../firebase.js';
+import { creationRequest } from '../../lib/creationRequest.js';
 import { apiFetch, apiUrl } from '../../api/client.js';
 import { count } from '../../lib/format.js';
 import { useNavigate } from 'react-router';
@@ -23,6 +25,7 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
   const [order, setOrder] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const pendingRequest = useRef(null);
 
   // Start from the address an admin saved on the customer's profile; the customer can still edit it.
   useEffect(() => {
@@ -51,10 +54,7 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
     setSaving(true);
     setSaveError('');
     try {
-      const response = await apiFetch(`${apiUrl}/orders/drafts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const payload = {
           customerName,
           customerId: assisted ? customer.uid : undefined,
           orderSource: assisted ? source : undefined,
@@ -62,12 +62,22 @@ export function OrderReview({ items, onClose, accountName, onSaved, role = 'cust
           deliveryDetails: delivery,
           customerNote: note,
           items: items.map(item => ({ goodsId: item.goodsId, quantity: item.quantity }))
-        })
+        };
+      const signature = JSON.stringify(payload);
+      if (pendingRequest.current?.signature !== signature) {
+        pendingRequest.current = { signature, ...await creationRequest(auth.currentUser.uid, payload) };
+      }
+      const response = await apiFetch(`${apiUrl}/orders/drafts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, requestId: pendingRequest.current.id })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'บันทึกร่างไม่สำเร็จ');
       setOrder(data.data);
       setSaved(true);
+      pendingRequest.current.clear();
+      pendingRequest.current = null;
       onSaved?.();
     } catch (error) {
       setSaveError(error.message || 'บันทึกร่างไม่สำเร็จ');

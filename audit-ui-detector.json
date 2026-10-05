@@ -1,0 +1,41 @@
+[
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\Lenovo\\.codex\\worktrees\\360b\\Wholesale Order\\web\\src\\index.css",
+    "line": 242,
+    "snippet": "border-left: 2px solid var(--line)",
+    "importedBy": [
+      "main.jsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\Lenovo\\.codex\\worktrees\\360b\\Wholesale Order\\web\\src\\index.css",
+    "line": 273,
+    "snippet": ".picker-row[aria-pressed=\"true\"] — inset box-shadow 3px stripe (left)",
+    "importedBy": [
+      "main.jsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\Lenovo\\.codex\\worktrees\\360b\\Wholesale Order\\web\\src\\index.css",
+    "line": 473,
+    "snippet": ".notification-list li[data-unread] a — inset box-shadow 3px stripe (left)",
+    "importedBy": [
+      "main.jsx"
+    ]
+  }
+]

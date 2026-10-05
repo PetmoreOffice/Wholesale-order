@@ -1,5 +1,9 @@
 # Deploy บน Windows Server
 
+> ทางเลือกไม่มีค่าโฮสติ้งเพิ่มเมื่อมีเครื่องและโดเมนอยู่แล้ว: ดู [Deploy ผ่าน Cloudflare Tunnel](DEPLOY-FREE.md) ซึ่งใช้ Node/Task Scheduler ชุดเดิมและไม่ต้องติดตั้ง IIS สำหรับเส้นทาง Tunnel
+
+> รอบ hardening 5 ตุลาคม: อัปเดต API และ build เว็บพร้อมกัน จากนั้นให้ผู้ใช้ reload หน้าเก่า เพราะการสร้างออร์เดอร์ต้องส่ง requestId เพื่อป้องกัน retry ซ้ำ สำรอง `api/data` ทั้งชุดรวม creationRequests ก่อนอัปเดต ห้ามนำ data จากเครื่องพัฒนาทับ Server การแก้ใน workspace ยังไม่ขึ้น Server จนกว่าจะส่ง release/commit ไปเครื่องปลายทาง
+
 ระบบรันเป็น **Node.js process ตัวเดียว** (เปิดโดย Task Scheduler) ที่ให้บริการทั้งหน้าเว็บและ API ส่วน **IIS** อยู่ด้านหน้าเพื่อทำ HTTPS
 
 ```

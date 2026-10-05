@@ -52,7 +52,7 @@ test('order numbers use the month in Thai time', async () => {
   catalogRows = [{ goodsId: 1, name: 'Item 1', minimumOrder: 1 }];
   mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-09-30T18:30:00Z') }); // 1 Oct 01:30 in Bangkok
   try {
-    const res = await call(ordersRouter, 'post', '/drafts', { body: { items: [{ goodsId: 1, quantity: 1 }] }, user: customer });
+    const res = await call(ordersRouter, 'post', '/drafts', { body: { requestId: 'month-test-request-001', items: [{ goodsId: 1, quantity: 1 }] }, user: customer });
     assert.equal(res.statusCode, 201);
     assert.equal(res.body.data.orderNumber, 'WO-202610-000001');
   } finally { mock.timers.reset(); }

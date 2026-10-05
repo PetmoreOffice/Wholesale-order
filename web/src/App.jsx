@@ -1,40 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { onIdTokenChanged, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from './firebase.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { SessionContext } from './context/session.js';
-import { AdminQueue } from './pages/AdminQueue.jsx';
-import { AdminSettings } from './pages/AdminSettings.jsx';
-import { Catalog } from './pages/Catalog.jsx';
-import { CustomerHome } from './pages/CustomerHome.jsx';
-import { CustomerOrderPage } from './pages/CustomerOrderPage.jsx';
-import { CustomerOrders } from './pages/CustomerOrders.jsx';
+import { observeSession } from './lib/observeSession.js';
+import { RouteBoundary } from './components/RouteBoundary.jsx';
+const AdminQueue = lazy(() => import('./pages/AdminQueue.jsx').then(m => ({ default: m.AdminQueue })));
+const AdminSettings = lazy(() => import('./pages/AdminSettings.jsx').then(m => ({ default: m.AdminSettings })));
+const Catalog = lazy(() => import('./pages/Catalog.jsx').then(m => ({ default: m.Catalog })));
+const CustomerHome = lazy(() => import('./pages/CustomerHome.jsx').then(m => ({ default: m.CustomerHome })));
+const CustomerOrderPage = lazy(() => import('./pages/CustomerOrderPage.jsx').then(m => ({ default: m.CustomerOrderPage })));
+const CustomerOrders = lazy(() => import('./pages/CustomerOrders.jsx').then(m => ({ default: m.CustomerOrders })));
 import { Login } from './pages/Login.jsx';
 import { Button } from '@/components/ui/button';
 
 export function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [authAttempt, setAuthAttempt] = useState(0);
 
   useEffect(() => {
     if (!firebaseConfigured) {
       setAuthLoading(false);
       return undefined;
     }
-    return onIdTokenChanged(auth, async (user) => {
-      if (!user) {
-        setSession(null);
-        setAuthLoading(false);
-        return;
-      }
-      const token = await user.getIdTokenResult();
-      // Accounts need a role set by an admin; the API refuses the rest, so say so here too.
-      const role = ['admin', 'customer'].includes(token.claims.role) ? token.claims.role : null;
-      setSession({ uid: user.uid, name: user.displayName || user.email, email: user.email, role });
-      setAuthLoading(false);
+    return observeSession(callback => onIdTokenChanged(auth, callback), {
+      loading: setAuthLoading, session: setSession, error: setAuthError
     });
-  }, []);
+  }, [authAttempt]);
 
   if (!firebaseConfigured) {
     return (
@@ -53,6 +48,9 @@ export function App() {
       </main>
     );
   }
+  if (authError) return <main className="login-page"><section className="login-panel standalone" role="alert">
+    <p>{authError}</p><Button onClick={() => { setAuthLoading(true); setAuthAttempt(value => value + 1); }}>ลองใหม่</Button>
+  </section></main>;
   if (!session) return <Login />;
   if (!session.role) {
     return (
@@ -70,7 +68,7 @@ export function App() {
   return (
     <SessionContext.Provider value={session}>
       <AppShell key={session.uid} session={session}>
-        <Routes>
+        <RouteBoundary><Suspense fallback={<p role="status" className="p-6">กำลังโหลดหน้า…</p>}><Routes>
           <Route path="/" element={<Navigate to={home} replace />} />
           <Route path="/catalog" element={<Catalog session={session} />} />
           {session.role === 'customer' && <Route path="/home" element={<CustomerHome />} />}
@@ -80,7 +78,7 @@ export function App() {
           {session.role === 'admin' && <Route path="/admin/*" element={<AdminQueue adminId={session.uid} />} />}
           {session.role === 'admin' && <Route path="/settings" element={<AdminSettings />} />}
           <Route path="*" element={<Navigate to={home} replace />} />
-        </Routes>
+        </Routes></Suspense></RouteBoundary>
       </AppShell>
     </SessionContext.Provider>
   );

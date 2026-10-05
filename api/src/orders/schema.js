@@ -23,9 +23,19 @@ export function normalizeStore(store) {
       throw new Error('Invalid order items');
     }
   }
-  for (const field of ['notificationReads', 'customers']) {
+  for (const field of ['notificationReads', 'customers', 'creationRequests']) {
     if (store[field] !== undefined && !isObject(store[field])) throw new Error(`Invalid ${field}`);
   }
   if (store.activity !== undefined && !Array.isArray(store.activity)) throw new Error('Invalid activity');
-  return { ...store, notificationReads: store.notificationReads ?? {}, customers: store.customers ?? {}, activity: store.activity ?? [] };
+  for (const record of Object.values(store.creationRequests ?? {})) {
+    if (!isObject(record) || !Number.isSafeInteger(record.orderId) || record.orderId < 1 || typeof record.hash !== 'string') throw new Error('Invalid creation request');
+  }
+  return { ...store, creationRequests: store.creationRequests ?? {}, notificationReads: store.notificationReads ?? {}, customers: store.customers ?? {}, activity: store.activity ?? [] };
+}
+
+export function validateArchive(value) {
+  if (!isObject(value) || !Array.isArray(value.orders)) throw new Error('Invalid archive structure');
+  const maxId = value.orders.reduce((max, order) => Math.max(max, order?.orderId || 0), 0);
+  normalizeStore({ nextOrderId: maxId + 1, orders: value.orders });
+  return value.orders;
 }

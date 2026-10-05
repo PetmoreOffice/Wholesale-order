@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { firebaseAuth } from '../config/firebase.js';
 import { Router } from 'express';
 import { query } from '../config/db.js';
@@ -171,8 +171,23 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
     }
     const initialStatus = assisted || req.body.submit === true ? 'submitted' : 'draft';
     if (!customerName) return badRequest(res, 'กรุณาระบุชื่อลูกค้าหรือบริษัท');
-    const products = await resolveItems(req.body.items);
-    const order = await changeStore((store) => {
+    const requestId = req.body.requestId;
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) return badRequest(res, 'กรุณาโหลดหน้าเว็บใหม่ก่อนสร้างคำสั่งซื้อ');
+    const requestedItems = checkItemList(req.body.items);
+    const requestKey = createHash('sha256').update(req.user.uid + ':' + requestId).digest('hex');
+    const requestHash = createHash('sha256').update(JSON.stringify({ customerId, initialStatus,
+      orderSource: assisted ? req.body.orderSource : 'self', items: requestedItems,
+      deliveryDetails: cleanText(req.body.deliveryDetails), customerNote: cleanText(req.body.customerNote) })).digest('hex');
+    const order = await changeStore(async (store) => {
+      store.creationRequests ??= {};
+      const previous = store.creationRequests[requestKey];
+      if (previous) {
+        if (previous.hash !== requestHash) throw orderError('INVALID_STATUS', 'คำขอนี้เคยใช้กับข้อมูลอื่นแล้ว กรุณาตรวจสอบคำสั่งซื้อ');
+        const existing = findOrder(store, previous.orderId) || await findArchivedOrder(previous.orderId);
+        if (!existing) throw orderError('INVALID_STATUS', 'คำสั่งซื้อจากคำขอนี้ถูกลบแล้ว กรุณาเริ่มรายการใหม่');
+        return existing;
+      }
+      const products = await resolveItems(requestedItems);
       const orderId = store.nextOrderId++;
       const now = new Date().toISOString();
       const orderNumber = 'WO-' + thaiMonth.format(new Date()).replace('-', '') + '-' + String(orderId).padStart(6, '0');
@@ -200,6 +215,7 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
       };
       addHistory(created, { fromStatus: null, toStatus: initialStatus, actorRole: req.user.role, actorId: req.user.uid, actorName: req.user.name, message: assisted ? 'สร้างคำสั่งซื้อแทนลูกค้า' : initialStatus === 'submitted' ? 'ยืนยันสั่งซื้อ' : 'บันทึกร่างคำสั่งซื้อ' });
       store.orders.unshift(created);
+      store.creationRequests[requestKey] = { orderId, hash: requestHash };
       return created;
     });
     return res.status(201).json({ data: assisted ? order : customerView(order) });

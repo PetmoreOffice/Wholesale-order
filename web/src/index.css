@@ -1,10 +1,17 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./vendor/shadcn-tailwind.css";
 
 /* The app ships a light theme only. Without this, shadcn's dark: utilities follow the OS
    setting and leave dark-mode users with half-dark inputs and buttons. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Comfortable hit areas without changing the login layout or icon size. */
+@layer components {
+  .login-form [data-slot="button"] { min-height: 44px; }
+  .login-form [data-slot="input-group-addon"]:has(button) { padding-block: 0; }
+  .login-form [data-slot="input-group-addon"] button { min-width: 44px; min-height: 44px; }
+}
 
 /* ─────────────────────────────────────────────────────────────
    Wholesale Control Desk — design tokens (see DESIGN.md)
