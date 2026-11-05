@@ -1,4 +1,4 @@
-import { apiFetch, apiUrl } from '../api/client.js';
+import { api } from './api.js';
 
 // The cart is a per-account convenience kept in this browser only; the API re-validates
 // every line when the order is saved.
@@ -15,9 +15,10 @@ export function readCart(uid) {
 
 export function writeCart(uid, items) {
   try { localStorage.setItem(cartKey(uid), JSON.stringify(items)); } catch { /* storage full or blocked: the cart still works in memory */ }
+  window.dispatchEvent(new CustomEvent('wholesale-cart', { detail: uid }));
 }
 
-// Adds reordered lines to what is already in the cart, never above a product's maximum.
+// Adds lines to what is already in the cart, never above a product's maximum.
 export function mergeIntoCart(cart, items) {
   const merged = cart.map(item => ({ ...item }));
   for (const item of items) {
@@ -34,10 +35,8 @@ export function mergeIntoCart(cart, items) {
  * puts them in this account's cart and returns a Thai summary for the catalog notice.
  */
 export async function reorderIntoCart(uid, orderId) {
-  const response = await apiFetch(`${apiUrl}/orders/${orderId}/reorder-items`);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'สั่งซ้ำไม่สำเร็จ');
-  const { orderNumber, items, unavailable, adjusted } = data.data;
+  const { data } = await api(`/orders/${orderId}/reorder-items`);
+  const { orderNumber, items, unavailable, adjusted } = data;
   if (!items.length) throw new Error(`สินค้าใน ${orderNumber} ไม่พร้อมขายแล้วทั้งหมด`);
   writeCart(uid, mergeIntoCart(readCart(uid), items));
   const parts = [`เพิ่ม ${items.length} รายการจาก ${orderNumber} ลงตะกร้าแล้ว`];
