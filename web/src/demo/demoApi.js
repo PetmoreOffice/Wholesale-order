@@ -134,7 +134,7 @@ export async function demoFetch(path, options = {}) {
   if (parts[0] === 'orders') {
     if (parts[1] === 'admin' && parts[2] === 'customer') {
       return url.searchParams.get('email') === 'shop@example.test'
-        ? json(200, { data: { uid: 'demo-customer', name: shop, email: 'shop@example.test' } })
+        ? json(200, { data: { uid: 'demo-customer', name: 'คุณตัวอย่าง (จำลอง)', companyName: shop, phone: '02-000-0000', address: '99 ถนนตัวอย่าง เขตจำลอง กรุงเทพฯ', email: 'shop@example.test' } })
         : json(404, { message: 'ไม่พบบัญชีลูกค้า กรุณาตรวจสอบอีเมล (โหมดจำลอง: ใช้ shop@example.test)' });
     }
     if (parts[1] === 'admin' && parts[2] === 'queue') return json(200, { data: orders.filter((row) => row.status !== 'draft').sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt)).map(summary) });

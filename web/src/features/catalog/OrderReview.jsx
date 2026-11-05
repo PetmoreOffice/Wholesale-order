@@ -49,6 +49,8 @@ export function OrderReview({ items, accountName, role, onSaved, onClose }) {
     try {
       const data = await api(`/orders/admin/customer?email=${encodeURIComponent(email.trim())}`);
       setCustomer(data.data);
+      // Start from the address saved on the customer's profile; the admin can still edit it.
+      if (data.data.address) setDelivery(current => current || data.data.address);
     } catch (error) {
       setSaveError(error.message || 'ค้นหาลูกค้าไม่สำเร็จ');
     } finally {
@@ -149,7 +151,17 @@ export function OrderReview({ items, accountName, role, onSaved, onClose }) {
                 <Button type="submit" variant="outline" size="lg" className="h-11" disabled={!email.trim() || lookingUp}>{lookingUp ? 'กำลังค้นหา…' : 'ค้นหาลูกค้า'}</Button>
               </div>
             </form>
-            {customer && <p role="status" className="rounded-md bg-brand-tint px-3 py-2 text-[15px] text-brand-deep">ลูกค้าที่เลือก: <b>{customer.name}</b> · {customer.email}</p>}
+            {/* The shop name leads; the contact name, email and phone follow. */}
+            {customer && (
+              <div role="status" className="grid gap-0.5 rounded-lg bg-brand-tint px-4 py-3 text-brand-deep">
+                <span className="text-[13px] font-semibold">ลูกค้าที่เลือก</span>
+                <b className="text-[16px] text-ink">{customer.companyName || customer.name || customer.email}</b>
+                <span className="text-[14px] [overflow-wrap:anywhere]">
+                  {[customer.companyName && customer.name, customer.email, customer.phone].filter(Boolean).join(' · ')}
+                </span>
+                {!customer.companyName && <span className="text-[14px] text-ink-2">ยังไม่มีชื่อร้าน เพิ่มได้ที่ ตั้งค่า → ผู้ใช้งาน → แก้ไขข้อมูล</span>}
+              </div>
+            )}
             <div className="grid gap-2">
               <span id="order-source" className={labelClass}>ช่องทางรับคำสั่งซื้อ</span>
               <RadioGroup aria-labelledby="order-source" value={source} onValueChange={setSource} className="flex flex-wrap gap-x-6 gap-y-2">
