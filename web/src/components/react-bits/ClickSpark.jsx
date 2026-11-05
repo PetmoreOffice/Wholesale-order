@@ -10,7 +10,7 @@ const EASINGS = {
   spring: t => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2)
 };
 
-const SHAPES = ['line', 'streak', 'dot', 'star'];
+const SHAPES = ['line', 'streak', 'dot', 'star', 'leaf'];
 const MAX_BURSTS = 32;
 const GRAVITY = 500;
 const REDUCED_MS = 320;
@@ -207,6 +207,31 @@ const ClickSpark = forwardRef(
           ctx.beginPath();
           ctx.arc(x, y, radius, 0, Math.PI * 2);
           ctx.fill();
+          return true;
+        }
+
+        if (s.shape === 'leaf') {
+          // A small leaf that tumbles as it flies: two arcs meeting at a point, with a midrib.
+          const [x, y] = position(burst, spark, distance, seconds);
+          const length = s.size * spark.scale;
+          const rotation = spark.angle + spark.spin * (reduced ? 0 : p) * Math.PI * 3;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(rotation);
+          ctx.globalAlpha = fade;
+          ctx.beginPath();
+          ctx.moveTo(-length / 2, 0);
+          ctx.quadraticCurveTo(0, -length * 0.42, length / 2, 0);
+          ctx.quadraticCurveTo(0, length * 0.42, -length / 2, 0);
+          ctx.fill();
+          ctx.globalAlpha = fade * 0.5;
+          ctx.strokeStyle = 'rgba(20, 60, 30, 0.6)';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(-length / 2, 0);
+          ctx.lineTo(length / 2, 0);
+          ctx.stroke();
+          ctx.restore();
           return true;
         }
 

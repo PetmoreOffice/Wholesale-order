@@ -135,6 +135,20 @@
   .meadow-walk { animation: meadow-walk 60s linear infinite; }
   .meadow-bob { animation: meadow-bob 0.6s ease-in-out infinite alternate; }
 }
+/* The app's morning sky (components/meadow/SkyBackdrop.jsx) and the meadow at the foot of the
+   rail (RailMeadow.jsx). Rays turn slowly and lean toward the pointer through --lean. */
+@layer components {
+  .sky-rays {
+    background: repeating-conic-gradient(from 100deg at 50% 50%, rgb(255 236 180 / 0.5) 0deg 4deg, transparent 4deg 13deg);
+    mask-image: radial-gradient(circle at 50% 50%, #000 8%, transparent 62%);
+    transform: rotate(var(--lean, 0deg));
+    transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sky-rays::after { content: ""; position: absolute; inset: 0; background: inherit; mask-image: inherit; opacity: 0.6; animation: sky-turn 90s linear infinite; }
+  .rail-walk { animation: rail-walk 34s linear -13s infinite; }
+}
+@keyframes sky-turn { to { transform: rotate(360deg); } }
+@keyframes rail-walk { from { left: -45%; } to { left: 105%; } }
 @keyframes meadow-sway { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
 @keyframes meadow-cloud { to { left: 110vw; } }
 @keyframes meadow-leaf {
@@ -151,6 +165,8 @@
   .meadow-blade, .meadow-cloud, .meadow-bob, .meadow-walk { animation: none !important; }
   .meadow-cloud:nth-of-type(1) { left: 58%; } .meadow-cloud:nth-of-type(2) { left: 41%; } .meadow-cloud:nth-of-type(3) { left: 78%; }
   .meadow-walk { left: 28%; }
+  .rail-walk, .sky-rays::after { animation: none !important; }
+  .rail-walk { left: 34%; }
   .meadow-leaf { display: none; }
 }
 
