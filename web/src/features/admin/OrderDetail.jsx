@@ -180,14 +180,23 @@ function Actions({ order, adminId }) {
     assign.mutate();
   }
 
-  function go(status) {
+  // A message typed before a forward move (approve, ERP, complete) is only a note on that move.
+  // It is easy to type a question and press the main button, so ask once which was meant.
+  const [noteFor, setNoteFor] = useState(null);
+
+  function go(status, { confirmed = false } = {}) {
     assign.reset(); move.reset();
     if (messageRequired.includes(status) && !message.trim()) {
       setInvalid(status === 'rejected' ? 'ระบุเหตุผลที่ปฏิเสธและแนวทางให้ลูกค้าก่อน' : 'ระบุข้อมูลที่ต้องการจากลูกค้าก่อน');
       document.getElementById('admin-message')?.focus();
       return;
     }
+    if (!confirmed && message.trim() && !messageRequired.includes(status)) {
+      setNoteFor(status);
+      return;
+    }
     setInvalid('');
+    setNoteFor(null);
     move.mutate(status);
   }
 
@@ -212,7 +221,7 @@ function Actions({ order, adminId }) {
             </Label>
             <Textarea
               id="admin-message" rows={3} value={message} disabled={busy} aria-invalid={Boolean(invalid) || undefined}
-              onChange={event => { setMessage(event.target.value); setInvalid(''); }}
+              onChange={event => { setMessage(event.target.value); setInvalid(''); setNoteFor(null); }}
               placeholder="อธิบายการดำเนินการ หรือข้อมูลที่ต้องการจากลูกค้า" className="bg-panel text-[15px]"
             />
           </div>
@@ -227,6 +236,20 @@ function Actions({ order, adminId }) {
               </Button>
             ))}
           </div>
+          {noteFor && (
+            <div role="alertdialog" aria-labelledby="note-question" className="grid gap-3 rounded-lg bg-kibble-soft px-4 py-3">
+              <p id="note-question" className="text-[15px] text-ink">
+                <b className="font-bold">ข้อความนี้จะไม่ถูกส่งเป็นคำถาม</b> จะบันทึกเป็นหมายเหตุของ “{adminActionText[noteFor]}” เท่านั้น ลูกค้าไม่ต้องตอบ
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {moves.includes('need_information') && (
+                  <Button type="button" disabled={busy} onClick={() => go('need_information', { confirmed: true })}>ส่งเป็นคำถาม (ขอข้อมูลเพิ่ม)</Button>
+                )}
+                <Button type="button" variant="outline" disabled={busy} onClick={() => go(noteFor, { confirmed: true })}>{adminActionText[noteFor]} พร้อมหมายเหตุ</Button>
+                <Button type="button" variant="ghost" disabled={busy} onClick={() => setNoteFor(null)}>ยกเลิก</Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="rounded-lg bg-sunken px-4 py-3 text-[15px] text-ink-2">รับงานนี้ก่อน จึงจะอนุมัติ ขอข้อมูลเพิ่ม หรือปฏิเสธได้</p>

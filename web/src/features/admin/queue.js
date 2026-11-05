@@ -35,6 +35,7 @@ export const isStale = (order, now) => !closedStatuses.includes(order.status) &&
 
 /** "35 นาที", "26 ชม.", "3 วัน": short enough for a table cell. */
 export function waitingText(minutes) {
+  if (minutes < 1) return 'เมื่อสักครู่';
   if (minutes < 60) return `${minutes} นาที`;
   const hours = Math.floor(minutes / 60);
   if (hours < 48) return `${hours} ชม.`;
