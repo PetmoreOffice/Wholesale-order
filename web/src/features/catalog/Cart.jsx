@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { maximumOf, minimumOf, unitLabel } from './catalogData.js';
 import { Overlay } from './Overlay.jsx';
 
-const stepClass = 'grid size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-40 disabled:hover:bg-transparent';
+export const stepClass = 'grid size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-40 disabled:hover:bg-transparent';
 
 /** Typed quantity, kept inside the product's minimum and maximum when the field is left. */
-function QuantityField({ item, onChange }) {
+export function QuantityField({ item, onChange }) {
   const [text, setText] = useState(String(item.quantity));
   useEffect(() => setText(String(item.quantity)), [item.quantity]);
   function commit() {

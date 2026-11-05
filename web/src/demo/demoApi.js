@@ -30,7 +30,9 @@ const departments = [
   { id: 'g2', name: 'อุปกรณ์ (จำลอง)', products: 18, departments: [{ id: 21, code: 'B1', name: 'ภาชนะ', products: 18, children: [] }] }
 ];
 
-const unitNames = ['ลัง', 'แพ็ค', 'ชิ้น', 'ถุง'];
+// Each demo SKU sells in a small unit; some also come by the dozen and by the case, like the
+// real GOODSMASTER rows (one goods row per unit size).
+const unitNames = ['ชิ้น', 'ถุง', 'ซอง', 'กระป๋อง'];
 const products = Array.from({ length: 60 }, (_, index) => {
   const goodsId = 1001 + index;
   const department = index < 24 ? (index < 16 ? 111 : 112) : index < 42 ? 12 : 21;
@@ -39,11 +41,17 @@ const products = Array.from({ length: 60 }, (_, index) => {
     barcode: '885' + String(1000000000 + index * 7919).slice(0, 10),
     name: `สินค้าตัวอย่าง ${index + 1} (จำลอง)`, englishName: null,
     categoryId: 1, categoryName: 'หมวดจำลอง', departmentId: department, departmentName: 'แผนกจำลอง',
-    unitId: index % 4, unitName: unitNames[index % 4], unitQuantity: [12, 6, 1, 20][index % 4],
+    unitId: index % 4, unitName: unitNames[index % 4], unitQuantity: 1,
     minimumOrder: index % 5 === 0 ? 2 : 1, maximumOrder: index % 7 === 0 ? 50 : 0,
     basePrice: 100 + index * 15
   };
 });
+const largerUnits = products.flatMap((product, index) => [
+  ...(index % 3 === 0 ? [{ ...product, goodsId: product.goodsId + 1000, goodsCode: 'D' + product.goodsId, unitId: 10, unitName: 'โหล', unitQuantity: 12, minimumOrder: 1, basePrice: product.basePrice * 12 }] : []),
+  ...(index % 2 === 0 ? [{ ...product, goodsId: product.goodsId + 2000, goodsCode: 'C' + product.goodsId, unitId: 11, unitName: 'ลัง x 24', unitQuantity: 24, minimumOrder: 1, maximumOrder: 0, basePrice: product.basePrice * 24 }] : [])
+]);
+const allGoods = [...products, ...largerUnits];
+const unitsOf = (product) => allGoods.filter((goods) => goods.skuId === product.skuId).sort((a, b) => a.unitQuantity - b.unitQuantity);
 const line = (product, quantity) => ({ itemId: 'i' + product.goodsId, goodsId: product.goodsId, goodsCode: product.goodsCode, skuId: product.skuId, sku: product.sku, name: product.name, unitName: product.unitName, unitQuantity: product.unitQuantity, minimumOrder: product.minimumOrder, maximumOrder: product.maximumOrder, quantity });
 
 function order(orderId, status, minutes, items, history, extra = {}) {
@@ -84,7 +92,7 @@ const orders = [
 let nextOrderId = 140;
 
 const summary = (row) => ({ orderId: row.orderId, orderNumber: row.orderNumber, customerName: row.customerName, status: row.status, priceStatus: row.priceStatus, createdAt: row.createdAt, updatedAt: row.updatedAt, itemCount: row.items.length, assignedAdminId: row.assignedAdminId || null, assignedAdminName: row.assignedAdminName || null, assignedAt: row.assignedAt || null });
-const forRole = (rows) => demoRole() === 'admin' ? rows : rows.map(({ basePrice, ...row }) => row);
+const forRole = (rows) => demoRole() === 'admin' ? rows : rows.map(({ basePrice, units, ...row }) => (units ? { ...row, units: forRole(units) } : row));
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const find = (id) => orders.find((row) => row.orderId === Number(id));
 
@@ -106,7 +114,9 @@ export async function demoFetch(path, options = {}) {
   if (parts[0] === 'products') {
     if (parts[1] === 'departments') return json(200, { data: departments });
     if (parts[1] === 'barcode') {
-      const rows = products.filter((product) => [product.barcode, product.sku, product.goodsCode].includes(decodeURIComponent(parts[2])));
+      const code = decodeURIComponent(parts[2]);
+      const rows = allGoods.filter((goods) => [goods.barcode, goods.sku].includes(code)).sort((a, b) => a.unitQuantity - b.unitQuantity);
+      if (!rows.length) rows.push(...allGoods.filter((goods) => goods.goodsCode === code));
       return rows.length ? json(200, { data: forRole(rows), requiresUnitSelection: rows.length > 1 }) : json(404, { message: 'ไม่พบสินค้าจากบาร์โค้ดนี้ กรุณาค้นหาด้วย SKU หรือชื่อสินค้า' });
     }
     const term = (url.searchParams.get('q') || '').toLowerCase();
@@ -118,7 +128,7 @@ export async function demoFetch(path, options = {}) {
       && (!groupDepartments || groupDepartments.includes(product.departmentId) || groupDepartments.includes(Math.floor(product.departmentId / 10))));
     const limit = Number(url.searchParams.get('limit')) || 50;
     const offset = Number(url.searchParams.get('offset')) || 0;
-    return json(200, { data: forRole(matching.slice(offset, offset + limit)), pagination: { limit, offset, hasMore: offset + limit < matching.length, total: matching.length, totalPages: Math.ceil(matching.length / limit) } });
+    return json(200, { data: forRole(matching.slice(offset, offset + limit).map((product) => ({ ...product, units: unitsOf(product) }))), pagination: { limit, offset, hasMore: offset + limit < matching.length, total: matching.length, totalPages: Math.ceil(matching.length / limit) } });
   }
 
   if (parts[0] === 'notifications') {
@@ -140,7 +150,7 @@ export async function demoFetch(path, options = {}) {
     if (parts[1] === 'admin' && parts[2] === 'queue') return json(200, { data: orders.filter((row) => row.status !== 'draft').sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt)).map(summary) });
     if (parts[1] === 'drafts' && method === 'POST') {
       const status = session.role === 'admin' || body.submit ? 'submitted' : 'draft';
-      const items = body.items.map((item) => line(products.find((product) => product.goodsId === Number(item.goodsId)), Number(item.quantity)));
+      const items = body.items.map((item) => line(allGoods.find((product) => product.goodsId === Number(item.goodsId)), Number(item.quantity)));
       const created = order(nextOrderId++, status, 0, items, [entry(null, status, session.role, session.name, 0, status === 'submitted' ? 'ยืนยันสั่งซื้อ' : 'บันทึกร่างคำสั่งซื้อ')], { customerNote: body.customerNote || null, deliveryDetails: body.deliveryDetails || null });
       orders.unshift(created);
       return json(201, { data: created });
@@ -151,7 +161,7 @@ export async function demoFetch(path, options = {}) {
     const action = parts[2];
     if (!action && method === 'GET') return json(200, { data: row });
     if (!action && method === 'DELETE') { orders.splice(orders.indexOf(row), 1); return json(200, { data: { orderId: row.orderId, deleted: true } }); }
-    if (action === 'reorder-items') return json(200, { data: { orderId: row.orderId, orderNumber: row.orderNumber, items: forRole(row.items.map((item) => ({ ...products.find((product) => product.goodsId === item.goodsId), quantity: item.quantity }))), unavailable: [], adjusted: [] } });
+    if (action === 'reorder-items') return json(200, { data: { orderId: row.orderId, orderNumber: row.orderNumber, items: forRole(row.items.map((item) => ({ ...allGoods.find((product) => product.goodsId === item.goodsId), quantity: item.quantity }))), unavailable: [], adjusted: [] } });
     if (action === 'submit') { move(row, 'submitted', 'customer', session.name, 'ส่งคำสั่งซื้อเพื่อรอตรวจสอบ'); return json(200, { data: { orderId: row.orderId, status: row.status } }); }
     if (action === 'reply') { move(row, 'assigned', 'customer', session.name, body.message); return json(200, { data: row }); }
     if (action === 'cancel') { move(row, 'cancelled', 'customer', session.name, body.reason || null); return json(200, { data: row }); }

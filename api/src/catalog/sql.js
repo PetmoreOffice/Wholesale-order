@@ -23,8 +23,21 @@ export const productJoins = `
   LEFT JOIN dbo.ICDEPT d ON d.ICDEPT_KEY = s.SKU_ICDEPT
   LEFT JOIN dbo.UOFQTY u ON u.UTQ_KEY = g.GOODS_UTQ`;
 
+// Numbers each goods row within its SKU and unit size. Several goods rows often share both
+// (alternate barcodes, L-prefixed codes) at the same price, so rank 1 is the row coded like
+// the SKU, then the oldest. Keep `sizeRank = 1` to list each unit size once.
+export const sizeRank = `ROW_NUMBER() OVER (
+  PARTITION BY s.SKU_KEY, u.UTQ_QTY
+  ORDER BY CASE WHEN g.GOODS_CODE = s.SKU_CODE THEN 0 ELSE 1 END, g.GOODS_KEY) AS sizeRank`;
+
+// Product categories (ICCAT codes) kept off the web entirely: KK is "แคมเปญคละ KK", mixed
+// campaign bundles sold another way. Matched by code so it needs no join in any query.
+export const hiddenCategoryCodes = ['KK'];
+
 export const sellableOnly = `
   g.GOODS_ENABLE = 'Y' AND g.GOODS_P_ENABLE = 'Y'
   AND s.SKU_ENABLE = 'Y' AND s.SKU_P_ENABLE = 'Y'
   AND COALESCE(g.GOODS_ALIAS, '') NOT LIKE '%เลิกผลิต%'
-  AND COALESCE(s.SKU_NAME, '') NOT LIKE '%เลิกผลิต%'`;
+  AND COALESCE(s.SKU_NAME, '') NOT LIKE '%เลิกผลิต%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.ICCAT hidden WHERE hidden.ICCAT_KEY = s.SKU_ICCAT
+    AND hidden.ICCAT_CODE IN (${hiddenCategoryCodes.map((code) => `'${code}'`).join(', ')}))`;

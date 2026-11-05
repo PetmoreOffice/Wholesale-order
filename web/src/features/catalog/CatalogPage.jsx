@@ -15,7 +15,8 @@ import { OrderReview } from './OrderReview.jsx';
 import { ProductList, ProductListSkeleton } from './ProductList.jsx';
 import { QuickOrder } from './QuickOrder.jsx';
 import { Scanner } from './Scanner.jsx';
-import { departmentsQuery, lookupCode, maximumOf, minimumOf, productsQuery, visiblePages } from './catalogData.js';
+import { UnitPicker } from './UnitPicker.jsx';
+import { cartProduct, departmentsQuery, lookupCode, maximumOf, minimumOf, productsQuery, unitsOf, visiblePages } from './catalogData.js';
 
 const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
 
@@ -65,6 +66,8 @@ export default function CatalogPage() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
+  // The product whose unit is being chosen (it sells in more than one unit), or null.
+  const [picking, setPicking] = useState(null);
   // A repeat order from another page arrives with a summary to show once.
   const [notice, setNotice] = useState(location.state?.notice || '');
   const listRef = useRef(null);
@@ -99,13 +102,15 @@ export default function CatalogPage() {
     }
   }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function add(product) {
+  // Adds one unit (a goods row) to the cart: `quantity` more of it, or one more / its minimum.
+  function add(unit, quantity) {
+    const product = cartProduct(unit);
     setCart(current => {
       const found = current.find(item => item.goodsId === product.goodsId);
       const maximum = maximumOf(product) || Infinity;
       return found
-        ? current.map(item => item.goodsId === product.goodsId ? { ...item, quantity: Math.min(maximum, item.quantity + 1) } : item)
-        : [...current, { ...product, quantity: minimumOf(product) }];
+        ? current.map(item => item.goodsId === product.goodsId ? { ...item, quantity: Math.min(maximum, item.quantity + (quantity ?? 1)) } : item)
+        : [...current, { ...product, quantity: Math.min(maximum, Math.max(minimumOf(product), quantity ?? 0)) }];
     });
   }
 
@@ -138,9 +143,17 @@ export default function CatalogPage() {
   // Confirmations are toasts: they say what happened without pushing the list down.
   const viewCart = { label: 'ดูตะกร้า', onClick: () => isDesktop() ? cartRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }) : setCartSheetOpen(true) };
 
+  // A product with several units asks which one first; a single-unit product goes straight in.
   function addAndTell(product) {
+    if (unitsOf(product).length > 1) { setPicking(product); return; }
     add(product);
     toast.success(`เพิ่ม ${product.name} ลงตะกร้าแล้ว`, { id: `cart-${product.goodsId}`, action: viewCart });
+  }
+
+  function addPicked(unit, quantity) {
+    add(unit, quantity);
+    setPicking(null);
+    toast.success(`เพิ่ม ${count.format(quantity)} ${unit.unitName} · ${unit.name} ลงตะกร้าแล้ว`, { id: `cart-${unit.goodsId}`, action: viewCart });
   }
 
   async function lookUp(code) {
@@ -148,9 +161,16 @@ export default function CatalogPage() {
     toast.loading('กำลังค้นหารหัส…', { id: 'scan' });
     try {
       const data = await lookupCode(code);
-      setScan({ key: filterKey, code, items: data.data });
-      if (data.requiresUnitSelection) {
-        toast.info(`พบ ${data.data.length} หน่วยขาย — เลือกหน่วยก่อนเพิ่มลงตะกร้า`, { id: 'scan' });
+      // One SKU's unit sizes arrive smallest first: show them as one product and ask which.
+      // A code shared by different SKUs stays a list to choose from.
+      const oneSku = data.data.every(row => row.skuId === data.data[0].skuId);
+      const found = { ...data.data[0], units: data.data };
+      setScan({ key: filterKey, code, items: oneSku ? [found] : data.data });
+      if (data.requiresUnitSelection && oneSku) {
+        toast.dismiss('scan');
+        setPicking(found);
+      } else if (data.requiresUnitSelection) {
+        toast.info(`พบ ${data.data.length} รายการจากรหัสนี้ — เลือกรายการที่ต้องการ`, { id: 'scan' });
       } else {
         add(data.data[0]);
         toast.success(`เพิ่ม ${data.data[0].name} ลงตะกร้าแล้ว`, { id: 'scan', action: viewCart });
@@ -262,6 +282,7 @@ export default function CatalogPage() {
       <CartBar items={cart} onChange={updateCart} onReview={() => setReviewOpen(true)} open={cartSheetOpen} onOpenChange={setCartSheetOpen} />
 
       {scannerOpen && <Scanner onResult={lookUp} onClose={() => setScannerOpen(false)} />}
+      {picking && <UnitPicker product={picking} inCart={inCart} showPrice={showPrice} onAdd={addPicked} onClose={() => setPicking(null)} />}
       {reviewOpen && <OrderReview items={cart} accountName={session.name} role={session.role} onSaved={() => setCart([])} onClose={() => setReviewOpen(false)} />}
     </div>
   );

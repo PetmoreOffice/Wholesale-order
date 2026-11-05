@@ -3,23 +3,54 @@ import { Check, Plus } from 'lucide-react';
 import { count, money } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { maximumOf, minimumOf, unitLabel } from './catalogData.js';
+import { maximumOf, minimumOf, unitLabel, unitsOf } from './catalogData.js';
 
 const productKey = (product) => `${product.goodsId}-${product.unitId ?? ''}`;
 
-function AddButton({ product, inCart, onAdd, className }) {
-  const atMaximum = maximumOf(product) > 0 && inCart >= maximumOf(product);
+/** The cart lines for a listed product, one per unit already added. */
+const linesIn = (product, inCart) => unitsOf(product).map(unit => ({ unit, quantity: inCart.get(unit.goodsId) || 0 })).filter(line => line.quantity > 0);
+
+/**
+ * One unit: adds it straight away (or one more). Several units: opens the unit picker, so the
+ * shopper chooses the small unit, the dozen or the case before anything goes in the cart.
+ */
+function AddButton({ product, lines, onAdd, className }) {
+  const several = unitsOf(product).length > 1;
+  const inCart = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const atMaximum = !several && maximumOf(product) > 0 && inCart >= maximumOf(product);
+  const label = several
+    ? `เพิ่ม ${product.name} — เลือกหน่วยก่อน`
+    : inCart ? `เพิ่ม ${product.name} อีก 1 (ในตะกร้า ${inCart})` : `เพิ่ม ${product.name} ลงตะกร้า`;
   return (
     <Button
       type="button"
       variant={inCart ? 'secondary' : 'outline'}
       disabled={atMaximum}
       onClick={() => onAdd(product)}
-      aria-label={inCart ? `เพิ่ม ${product.name} อีก 1 (ในตะกร้า ${inCart})` : `เพิ่ม ${product.name} ลงตะกร้า`}
+      aria-label={label}
+      aria-haspopup={several ? 'dialog' : undefined}
       className={cn('h-9 min-w-[6.75rem] text-[15px] font-bold', inCart && 'border border-brand/30', className)}
     >
-      {inCart ? <><Check aria-hidden="true" /> <span className="num">{count.format(inCart)}</span> ในตะกร้า</> : <><Plus aria-hidden="true" /> เพิ่ม</>}
+      {inCart && !several ? <><Check aria-hidden="true" /> <span className="num">{count.format(inCart)}</span> ในตะกร้า</> : <><Plus aria-hidden="true" /> เพิ่ม</>}
     </Button>
+  );
+}
+
+/** "โหล, ลัง × 24": the larger units the picker offers, under the small one the list shows. */
+function MoreUnits({ product }) {
+  const larger = unitsOf(product).slice(1);
+  if (!larger.length) return null;
+  return <span className="block text-[13px] text-ink-3">หรือ {larger.map(unitLabel).join(', ')}</span>;
+}
+
+/** "ในตะกร้า 2 โหล · 5 ชิ้น", shown only when a multi-unit product has lines in the cart. */
+function InCart({ product, lines }) {
+  if (unitsOf(product).length < 2 || !lines.length) return null;
+  return (
+    <p className="mt-0.5 inline-flex flex-wrap items-center gap-x-1 text-[13px] font-semibold text-brand-deep">
+      <Check aria-hidden="true" className="size-3.5" />ในตะกร้า
+      {lines.map((line, index) => <span key={line.unit.goodsId}>{index > 0 && '· '}<span className="num">{count.format(line.quantity)}</span> {line.unit.unitName}</span>)}
+    </p>
   );
 }
 
@@ -52,16 +83,16 @@ export function ProductList({ products, inCart, onAdd, showPrice }) {
         </thead>
         <tbody>
           {products.map(product => {
-            const quantity = inCart.get(product.goodsId) || 0;
+            const lines = linesIn(product, inCart);
             return (
-              <tr key={productKey(product)} className={cn('border-b border-line last:border-0 hover:bg-sunken', quantity > 0 && 'bg-brand-tint/50')}>
+              <tr key={productKey(product)} className={cn('border-b border-line last:border-0 hover:bg-sunken', lines.length > 0 && 'bg-brand-tint/50')}>
                 <td className="py-2 pr-3 pl-5 align-middle whitespace-nowrap"><span className="sku">{product.sku}</span></td>
-                <td className="px-3 py-2 align-middle font-semibold text-ink">{product.name}</td>
-                <td className="px-3 py-2 align-middle whitespace-nowrap text-ink-2">{unitLabel(product)}</td>
+                <td className="px-3 py-2 align-middle font-semibold text-ink">{product.name}<InCart product={product} lines={lines} /></td>
+                <td className="px-3 py-2 align-middle text-ink-2"><span className="whitespace-nowrap">{unitLabel(product)}</span><MoreUnits product={product} /></td>
                 <td className="num px-3 py-2 text-right align-middle font-semibold">{count.format(minimumOf(product))}</td>
                 <td className="px-3 py-2 text-right align-middle whitespace-nowrap"><Maximum product={product} /></td>
                 {showPrice && <td className="px-3 py-2 text-right align-middle whitespace-nowrap"><Price product={product} /></td>}
-                <td className="py-2 pr-5 pl-3 text-right align-middle"><AddButton product={product} inCart={quantity} onAdd={onAdd} /></td>
+                <td className="py-2 pr-5 pl-3 text-right align-middle"><AddButton product={product} lines={lines} onAdd={onAdd} /></td>
               </tr>
             );
           })}
@@ -70,9 +101,9 @@ export function ProductList({ products, inCart, onAdd, showPrice }) {
 
       <ul className="md:hidden">
         {products.map(product => {
-          const quantity = inCart.get(product.goodsId) || 0;
+          const lines = linesIn(product, inCart);
           return (
-            <li key={productKey(product)} className={cn('grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3.5 last:border-0', quantity > 0 && 'bg-brand-tint/50')}>
+            <li key={productKey(product)} className={cn('grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3.5 last:border-0', lines.length > 0 && 'bg-brand-tint/50')}>
               <div className="min-w-0">
                 <span className="sku block">{product.sku}</span>
                 <p className="text-[15px] leading-snug font-semibold text-ink">{product.name}</p>
@@ -81,8 +112,10 @@ export function ProductList({ products, inCart, onAdd, showPrice }) {
                   {maximumOf(product) > 0 && <> · สูงสุด <span className="num">{count.format(maximumOf(product))}</span></>}
                   {showPrice && <> · <Price product={product} /></>}
                 </p>
+                <MoreUnits product={product} />
+                <InCart product={product} lines={lines} />
               </div>
-              <AddButton product={product} inCart={quantity} onAdd={onAdd} className="h-10 min-w-0 px-3" />
+              <AddButton product={product} lines={lines} onAdd={onAdd} className="h-10 min-w-0 px-3" />
             </li>
           );
         })}
