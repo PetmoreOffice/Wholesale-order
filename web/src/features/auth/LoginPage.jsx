@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { useState } from 'react';
+import { MeadowScene } from './MeadowScene.jsx';
 import BlurText from '@/components/react-bits/BlurText';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { ArrowRight, Eye, EyeOff, Mail } from 'lucide-react';
@@ -8,38 +9,33 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 
-// The kibble pit is a WebGL scene: load it only with the sign-in screen.
-const Ballpit = lazy(() => import('@/components/react-bits/Ballpit'));
-
-/** Full-screen frame for sign-in and the account states before the app (no Firebase, no role). */
 const headline = 'สั่งอาหารสัตว์ทั้งร้าน ในไม่กี่คลิก';
 
+/**
+ * Full-screen frame for sign-in and the account states before the app (no Firebase, no role):
+ * a morning meadow fills the screen, the promise sits in the sky, the form on a white card.
+ */
 export function GateFrame({ children }) {
   // BlurText does not honour reduced motion on its own and would stay blurred.
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="flex flex-col gap-8 overflow-hidden bg-brand px-6 py-8 text-white sm:px-10 lg:px-14 lg:py-12">
-        <p className="flex items-center gap-3 font-display text-xl font-medium"><BrandMark />Wholesale Order</p>
-        <div className="max-lg:hidden lg:mt-6">
-          {reducedMotion
-            ? <p className="max-w-md font-display text-[40px] leading-[1.15] font-medium">{headline}</p>
-            : <BlurText text={headline} animateBy="words" delay={120} className="max-w-md font-display text-[40px] leading-[1.15] font-medium" />}
-          <p className="mt-5 max-w-md text-[17px] text-brand-soft">ค้นหาด้วยชื่อ SKU หรือสแกนบาร์โค้ด ส่งคำสั่งซื้อ แล้วดูป้ายแขวนบอกเสมอว่าถึงขั้นไหนและถึงตาใคร</p>
-        </div>
-        {/* A bag's worth of kibble tumbles into its own box below the copy and follows the
-            pointer there; it cannot reach the text. Without motion it would freeze mid-fall,
-            so it is left out and the box stays empty. */}
-        <div aria-hidden="true" className="relative -mx-6 min-h-0 flex-1 overflow-hidden max-lg:hidden sm:-mx-10 lg:-mx-14">
-          {!reducedMotion && (
-            <Suspense fallback={null}>
-              <Ballpit count={55} colors={['#F07A3A', '#C9824A', '#8A5A33', '#F4B183']} material="satin" gravity={1.2} minSize={0.45} maxSize={0.85} followCursor clickEffect="burst" lightIntensity={1.1} />
-            </Suspense>
-          )}
-        </div>
-        <p className="text-sm text-brand-soft max-lg:hidden">หากยังไม่มีบัญชี โปรดติดต่อผู้ดูแลระบบของบริษัท</p>
-      </aside>
-      <section className="flex items-start justify-center bg-ground px-5 py-10 sm:items-center sm:px-10">{children}</section>
+    <main className="relative isolate min-h-dvh overflow-hidden bg-[#CBE9EC]">
+      <MeadowScene className="-z-10" />
+      <div className="mx-auto flex min-h-dvh w-full max-w-[1280px] flex-col gap-8 px-5 py-6 sm:px-10 lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start lg:gap-16 lg:py-12">
+        <header className="lg:pt-6">
+          <p className="flex items-center gap-3 font-display text-xl font-medium text-brand-deep"><BrandMark />Wholesale Order</p>
+          <div className="mt-8 max-lg:hidden lg:mt-16">
+            {reducedMotion
+              ? <p className="max-w-lg font-display text-[52px] leading-[1.1] font-medium text-brand-deep">{headline}</p>
+              : <BlurText text={headline} animateBy="words" delay={120} className="max-w-lg font-display text-[52px] leading-[1.1] font-medium text-brand-deep" />}
+            <p className="mt-5 max-w-md text-[18px] text-brand-deep/85">อาหารและของใช้สัตว์เลี้ยงจากคลังจริง ค้นด้วยชื่อ SKU หรือสแกนบาร์โค้ด แล้วติดตามได้ทุกขั้นจนส่งถึงร้าน</p>
+          </div>
+        </header>
+        <section className="w-full max-w-[440px] self-center rounded-[24px] bg-panel/95 p-6 shadow-overlay ring-1 ring-white/60 sm:p-8 lg:mt-10 lg:self-start">
+          {children}
+        </section>
+        <p className="mt-auto text-sm font-medium text-white lg:col-span-2">หากยังไม่มีบัญชี โปรดติดต่อผู้ดูแลระบบของบริษัท</p>
+      </div>
     </main>
   );
 }
@@ -109,7 +105,6 @@ export function LoginPage() {
           <Button size="lg" className="h-12 text-[17px]" disabled={submitting}>{submitting ? 'กำลังตรวจสอบ…' : <>เข้าสู่ระบบ <ArrowRight aria-hidden="true" /></>}</Button>
           <Button variant="link" type="button" className="justify-self-start px-0" onClick={resetPassword} disabled={submitting}>ลืมรหัสผ่าน</Button>
         </form>
-        <p className="mt-8 text-sm text-ink-3 lg:hidden">หากยังไม่มีบัญชี โปรดติดต่อผู้ดูแลระบบของบริษัท</p>
       </div>
     </GateFrame>
   );
