@@ -3,7 +3,6 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
 import { ClipboardList, House, Inbox, LogOut, Package, PawPrint, Settings, ShoppingCart } from 'lucide-react';
 import AnimatedContent from '@/components/react-bits/AnimatedContent';
-import ClickSpark from '@/components/react-bits/ClickSpark';
 import { RailMeadow } from '@/components/meadow/RailMeadow';
 import { SkyBackdrop } from '@/components/meadow/SkyBackdrop';
 import { auth } from '@/firebase';
@@ -58,9 +57,9 @@ export function AppShell({ session, children }) {
   }
 
   return (
-    // Every click shakes loose a few leaves that tumble and fall; nothing waits on them.
-    <ClickSpark sparkColor={['#7FB069', '#A8C66C', '#E7B547', '#5FAE8C']} shape="leaf" sparkSize={13} sparkRadius={34} sparkCount={8} duration={760} gravity={0.5} className="!h-auto min-h-dvh lg:grid lg:grid-cols-[232px_1fr]">
-      {/* The morning sky behind the work area: sun rays and pollen that follow the pointer. */}
+    // isolate keeps the sky's negative z-index above the page background.
+    <div className="relative isolate min-h-dvh w-full lg:grid lg:grid-cols-[232px_1fr]">
+      {/* The morning sky behind the work area: slowly turning sun rays and hazy hills. */}
       <SkyBackdrop className="fixed inset-0 -z-10 lg:left-[232px]" />
       <a href="#content" className="sr-only z-50 rounded-md bg-panel px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2">ข้ามไปเนื้อหา</a>
 
@@ -86,7 +85,7 @@ export function AppShell({ session, children }) {
 
       <div className="flex min-w-0 flex-col pb-[76px] lg:pb-0">
         {/* Top bar: brand on phones, notifications and account everywhere. */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-white/70 bg-white/75 px-4 backdrop-blur-md lg:h-16 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-white/70 bg-white/85 px-4 lg:h-16 lg:px-8">
           <Link to="/" aria-label="Wholesale Order หน้าแรก" className="flex items-center gap-2 font-display font-medium whitespace-nowrap text-brand lg:hidden"><BrandMark className="size-8 text-xs" /><span className="max-[400px]:hidden">Wholesale Order</span></Link>
           <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:w-full">
             <CommandPalette role={session.role} />
@@ -116,10 +115,11 @@ export function AppShell({ session, children }) {
 
         <main id="content" className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {/* Each area sprouts up once when it opens (keyed by area, so picking an order in the
-              admin queue does not remount it). Once settled, transform, filter and the wipe mask
-              are cleared: any of them would trap the fixed action bars and sheets inside the page. */}
-          <div className={settled === area ? '[&>*]:![filter:none] [&>*]:![transform:none] [&>*]:![mask-image:none]' : undefined}>
-            <AnimatedContent key={area} trigger="mount" distance={28} scale={0.985} wipe="up" duration={0.6} ease="power3.out" onComplete={() => setSettled(area)}>
+              admin queue does not remount it): transform and opacity only, so the compositor runs
+              it. Once settled, transform and filter are cleared: either would trap the fixed
+              action bars and sheets inside the page. */}
+          <div className={settled === area ? '[&>*]:![filter:none] [&>*]:![transform:none]' : undefined}>
+            <AnimatedContent key={area} trigger="mount" distance={28} scale={0.985} duration={0.5} ease="power3.out" onComplete={() => setSettled(area)}>
               {children}
             </AnimatedContent>
           </div>
@@ -141,6 +141,6 @@ export function AppShell({ session, children }) {
           </NavLink>
         ))}
       </nav>
-    </ClickSpark>
+    </div>
   );
 }

@@ -3,7 +3,6 @@ import { count } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import CountUp from '@/components/react-bits/CountUp';
 import SpotlightCard from '@/components/react-bits/SpotlightCard';
-import StarBorder from '@/components/react-bits/StarBorder';
 
 /**
  * Counts as big numerals that roll up to their value, each on a card with a patch of warm
@@ -19,6 +18,9 @@ export function CountBlocks({ blocks, className }) {
           <SpotlightCard
             key={block.label}
             theme="light"
+            // Wake only under the pointer: a proximity halo kept every card measuring and
+            // repainting on each mouse move anywhere on the page.
+            proximity={0}
             spotlightColor={loud ? '#FFF1B8' : '#FFC94D'}
             intensity={loud ? 0.45 : 0.35}
             className={cn('!flex !rounded-[24px] !p-0 !shadow-[0_10px_28px_-14px_rgb(14_60_58/0.35)]', loud ? '!bg-kibble' : '!bg-panel')}
@@ -32,12 +34,14 @@ export function CountBlocks({ blocks, className }) {
             </div>
           </SpotlightCard>
         );
-        // A glint of sunlight runs round the card that waits on the viewer; the card is a plain rounded
-        // rectangle, so the glint's path matches its edge exactly.
+        // Two glints of sunlight run round the card that waits on the viewer: a turning gradient
+        // behind a 3px ring. It turns on transform only, so the compositor runs it (the canvas
+        // StarBorder it replaced redrew every frame and was the app's largest idle CPU cost).
         return loud ? (
-          <StarBorder key={block.label} as="div" theme="light" radius={24} thickness={2} stars={2} glow={1} sparkle color="#FFE58A" backgroundColor="transparent" textColor="var(--ink)" borderColor="transparent" hover="none" clickPulse={false} className="!flex !w-full !p-0 [&>div]:w-full">
+          <div key={block.label} className="turn-glint relative isolate flex overflow-hidden rounded-[27px] bg-kibble p-[3px] [&>*]:w-full">
+            <span aria-hidden="true" className="turn-glint-beam" />
             {card}
-          </StarBorder>
+          </div>
         ) : card;
       })}
     </dl>
