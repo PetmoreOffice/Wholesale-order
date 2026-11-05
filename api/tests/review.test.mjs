@@ -7,7 +7,9 @@ let store;
 let queries = [];
 let catalogRows = [];
 await mock.module('../src/config/db.js', { namedExports: { query: async (sql, params) => { queries.push({ sql, params }); return catalogRows; } } });
-await mock.module('../src/config/firebase.js', { namedExports: { firebaseAuth: () => ({}) } });
+await mock.module('../src/config/firebase.js', { namedExports: { firebaseAuth: () => ({
+  getUserByEmail: async (email) => ({ uid: 'shop-uid', email, displayName: '', disabled: false, customClaims: { role: 'customer' } })
+}) } });
 await mock.module('../src/middleware/auth.js', { namedExports: {
   requireAuth: (_req, _res, next) => next(), requireRole: () => (_req, _res, next) => next(),
   forgetAccountStatus: () => {}, roles: ['admin', 'customer']
@@ -76,4 +78,13 @@ test('marking notifications read stops at the newest event shown', async () => {
   // A future or missing time falls back to now.
   await call(notificationsRouter, 'post', '/read', { body: { until: '2999-01-01T00:00:00Z' }, user: customer });
   assert.ok(Date.parse(store.notificationReads.customer) <= Date.now());
+});
+
+test('assisted-order customer lookup returns the shop name and address from the profile', async () => {
+  store = { nextOrderId: 1, orders: [], activity: [], customers: { 'shop-uid': { companyName: 'ร้านเพ็ทช็อป บางนา', phone: '081-000-0000', address: 'บางนา กรุงเทพฯ', note: 'ภายใน' } } };
+  const res = await call(ordersRouter, 'get', '/admin/customer', { query: { email: 'shop@example.com' }, user: { uid: 'admin', role: 'admin' } });
+  assert.equal(res.body.data.companyName, 'ร้านเพ็ทช็อป บางนา');
+  assert.equal(res.body.data.address, 'บางนา กรุงเทพฯ');
+  assert.equal(res.body.data.name, null);
+  assert.equal('note' in res.body.data, false);
 });
