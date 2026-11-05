@@ -53,9 +53,19 @@ export function findCategory(groups, { g, d, s }) {
 export const minimumOf = (product) => Number(product.minimumOrder) || 1;
 export const maximumOf = (product) => Number(product.maximumOrder) || 0;
 
+/** "โหล × 12"; a name that already says its size ("PACK x 12") is not repeated. */
 export function unitLabel(product) {
-  return `${product.unitName || 'ไม่ระบุหน่วย'}${product.unitQuantity > 1 ? ` × ${count.format(product.unitQuantity)}` : ''}`;
+  const name = product.unitName || 'ไม่ระบุหน่วย';
+  const quantity = Number(product.unitQuantity) || 1;
+  const saysSize = (name.match(/\d+/g) || []).map(Number).includes(quantity);
+  return quantity > 1 && !saysSize ? `${name} × ${count.format(quantity)}` : name;
 }
+
+/** The unit sizes a listed product sells in, smallest first (the list row itself if none came). */
+export const unitsOf = (product) => product.units?.length ? product.units : [product];
+
+/** A cart line keeps the chosen unit only, not the other units it was picked from. */
+export const cartProduct = ({ units, ...unit }) => unit;
 
 /** Keeps a quantity inside a product's minimum and maximum; says what changed, if anything. */
 export function clampQuantity(product, requested) {
