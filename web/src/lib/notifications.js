@@ -1,4 +1,4 @@
-import { apiFetch, apiUrl } from '../api/client.js';
+import { api } from './api.js';
 
 const customerText = {
   submitted: 'แอดมินสร้างคำสั่งซื้อให้คุณ',
@@ -25,14 +25,9 @@ export function notificationLink(event, role) {
   return role === 'admin' ? `/admin/orders/${event.orderId}` : `/orders/${event.orderId}`;
 }
 
-export async function fetchNotifications() {
-  const response = await apiFetch(`${apiUrl}/notifications`);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'โหลดการแจ้งเตือนไม่สำเร็จ');
-  return data;
-}
+export const notificationsQuery = { queryKey: ['notifications'], queryFn: () => api('/notifications'), refetchInterval: 30_000, refetchIntervalInBackground: false };
 
 // `until`: time of the newest event the user has seen; later events stay unread.
-export async function markNotificationsRead(until) {
-  await apiFetch(`${apiUrl}/notifications/read`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ until }) });
+export function markNotificationsRead(until) {
+  return api('/notifications/read', { body: { until } });
 }

@@ -5,29 +5,13 @@ import { query } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { catalogFields, orderItemFields, orderItemJoins, productJoins, sellableOnly } from '../catalog/sql.js';
 import { addHistory, changeStore, findArchivedOrder, findOrder, orderSummary, readStore } from '../orders/store.js';
+import {
+  assignToAdmin, cancelByCustomer, checkDeletable, checkDraft, checkItemList, checkOwner, checkQuantity, checkStatusRequest,
+  cleanText, customerView, editDraft, moveByAdmin, orderError, orderNumber, ownOrder, parseOrderId, replyByCustomer, submitDraft
+} from '../orders/workflow.js';
 
 export const ordersRouter = Router();
 ordersRouter.use(requireAuth);
-
-const MAX_ITEMS = 200;
-const MAX_TEXT = 4000;
-
-const adminTransitions = {
-  submitted: [],
-  assigned: ['need_information', 'approved', 'rejected'],
-  need_information: ['approved', 'rejected'],
-  approved: ['erp_entry'],
-  erp_entry: ['completed'],
-  // Legacy statuses remain readable for existing local JSON orders.
-  preparing: ['shipped'],
-  shipped: ['completed']
-};
-
-// Customers must know what to fix or why the order stopped.
-const messageRequired = new Set(['need_information', 'rejected']);
-
-// A customer may withdraw an order until an admin approves it.
-const customerCancellable = new Set(['submitted', 'assigned', 'need_information']);
 
 const errorStatus = {
   BAD_REQUEST: [400, 'INVALID_ORDER_REQUEST'],
@@ -35,12 +19,6 @@ const errorStatus = {
   NOT_FOUND: [404, 'ORDER_NOT_FOUND'],
   INVALID_STATUS: [409, 'INVALID_ORDER_STATUS']
 };
-
-function orderError(code, message) {
-  const error = new Error(message);
-  error.code = code;
-  return error;
-}
 
 function handleOrderError(res, next, error) {
   if (['auth/user-not-found', 'auth/invalid-uid'].includes(error.code)) return badRequest(res, 'ไม่พบบัญชีลูกค้าที่เลือก');
@@ -53,55 +31,9 @@ function badRequest(res, message) {
   return res.status(400).json({ error: 'INVALID_ORDER_REQUEST', message });
 }
 
-function cleanText(value) {
-  if (typeof value !== 'string') return null;
-  return value.trim().slice(0, MAX_TEXT) || null;
-}
-
-function parseOrderId(value) {
-  const orderId = Number.parseInt(value, 10);
-  if (!Number.isInteger(orderId)) throw orderError('BAD_REQUEST', 'orderId ต้องเป็นตัวเลข');
-  return orderId;
-}
-
-function ownOrder(store, orderId, user) {
-  const order = findOrder(store, orderId);
-  if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
-  if (order.customerId !== user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');
-  return order;
-}
-
 // Looks in the live store first, then in the yearly archive files.
 async function loadOrder(orderId) {
   return findOrder(await readStore(), orderId) || await findArchivedOrder(orderId);
-}
-
-async function ownOrderAnywhere(orderId, user) {
-  const order = await loadOrder(orderId);
-  if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
-  if (order.customerId !== user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');
-  return order;
-}
-
-function checkQuantity(product, quantity) {
-  if (!Number.isInteger(quantity) || quantity <= 0) throw orderError('BAD_REQUEST', 'จำนวนของ ' + product.name + ' ต้องเป็นจำนวนเต็มมากกว่า 0');
-  const minimum = Number(product.minimumOrder) || 1;
-  const maximum = Number(product.maximumOrder) || 0;
-  if (quantity < minimum) throw orderError('BAD_REQUEST', product.name + ' ต้องสั่งอย่างน้อย ' + minimum);
-  if (maximum > 0 && quantity > maximum) throw orderError('BAD_REQUEST', product.name + ' สั่งได้ไม่เกิน ' + maximum);
-}
-
-function checkItemList(items) {
-  if (!Array.isArray(items) || !items.length) throw orderError('BAD_REQUEST', 'คำสั่งซื้อต้องมีสินค้าอย่างน้อยหนึ่งรายการ');
-  if (items.length > MAX_ITEMS) throw orderError('BAD_REQUEST', 'คำสั่งซื้อมีสินค้าได้ไม่เกิน ' + MAX_ITEMS + ' รายการ');
-  const seen = new Set();
-  return items.map((item) => {
-    const goodsId = Number.parseInt(item?.goodsId, 10);
-    if (!Number.isInteger(goodsId)) throw orderError('BAD_REQUEST', 'รายการสินค้าไม่ถูกต้อง');
-    if (seen.has(goodsId)) throw orderError('BAD_REQUEST', 'มีสินค้าซ้ำในคำสั่งซื้อ กรุณารวมเป็นรายการเดียว');
-    seen.add(goodsId);
-    return { goodsId, quantity: Number(item.quantity) };
-  });
 }
 
 // One SELECT for all lines (bound parameters, at most MAX_ITEMS) instead of one per line:
@@ -126,21 +58,6 @@ async function resolveItems(items) {
     checkQuantity(product, quantity);
     return { itemId: randomUUID(), ...product, quantity };
   });
-}
-
-// Order numbers carry the month in Thai time, so an order at 01:00 on the 1st is not
-// numbered with the previous month.
-const thaiMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit' });
-
-// Customers see only their own workflow; admin-internal fields stay on the server.
-function customerView(order) {
-  const { assignmentLog, assignedAdminId, createdById, ...visible } = order;
-  return {
-    ...visible,
-    // Admin account ids stay on the server; the name is enough for the customer.
-    history: (order.history || []).filter((entry) => entry.visibleToCustomer !== false).map(({ actorId, ...entry }) => entry),
-    messages: (order.messages || []).filter((entry) => entry.visibleToCustomer !== false)
-  };
 }
 
 ordersRouter.get('/admin/customer', requireRole('admin'), async (req, res, next) => {
@@ -175,10 +92,9 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
     const order = await changeStore((store) => {
       const orderId = store.nextOrderId++;
       const now = new Date().toISOString();
-      const orderNumber = 'WO-' + thaiMonth.format(new Date()).replace('-', '') + '-' + String(orderId).padStart(6, '0');
       const created = {
         orderId,
-        orderNumber,
+        orderNumber: orderNumber(orderId),
         customerId,
         // The shop name from the customer profile reads better in the queue than an email.
         customerName: store.customers[customerId]?.companyName || customerName,
@@ -211,15 +127,10 @@ ordersRouter.post('/:orderId/submit', requireRole('customer'), async (req, res, 
     const orderId = parseOrderId(req.params.orderId);
     const result = await changeStore(async (store) => {
       const order = ownOrder(store, orderId, req.user);
-      if (order.status !== 'draft') throw orderError('INVALID_STATUS', 'ส่งคำสั่งซื้อนี้ไปแล้วหรือไม่สามารถส่งได้');
+      checkDraft(order);
       // Keep validation and submission in the same queue as draft edits/deletion.
       // A failed catalog lookup leaves the persisted draft unchanged.
-      const items = await resolveItems(order.items);
-      order.items = items.map(item => ({ ...item, itemId: order.items.find(old => old.goodsId === item.goodsId).itemId || item.itemId }));
-      order.status = 'submitted';
-      order.submittedAt = new Date().toISOString();
-      order.updatedAt = order.submittedAt;
-      addHistory(order, { fromStatus: 'draft', toStatus: 'submitted', actorRole: 'customer', actorId: req.user.uid, actorName: req.user.name, message: 'ส่งคำสั่งซื้อเพื่อรอตรวจสอบ' });
+      submitDraft(order, req.user, await resolveItems(order.items));
       return { orderId, status: order.status };
     });
     return res.json({ data: result });
@@ -232,17 +143,7 @@ ordersRouter.patch('/:orderId/draft', requireRole('customer'), async (req, res, 
     const requested = checkItemList(req.body.items);
     const result = await changeStore((store) => {
       const order = ownOrder(store, orderId, req.user);
-      if (order.status !== 'draft') throw orderError('INVALID_STATUS', 'แก้ไขได้เฉพาะคำสั่งซื้อที่ยังเป็นร่าง');
-      order.items = requested.map(({ goodsId, quantity }) => {
-        const original = order.items.find((row) => row.goodsId === goodsId);
-        if (!original) throw orderError('BAD_REQUEST', 'ไม่พบสินค้านี้ในร่างคำสั่งซื้อ');
-        checkQuantity(original, quantity);
-        return { ...original, quantity };
-      });
-      order.deliveryDetails = cleanText(req.body.deliveryDetails);
-      order.customerNote = cleanText(req.body.customerNote);
-      order.updatedAt = new Date().toISOString();
-      addHistory(order, { fromStatus: 'draft', toStatus: 'draft', actorId: req.user.uid, actorName: req.user.name, actorRole: 'customer', message: 'แก้ไขร่างคำสั่งซื้อ' });
+      editDraft(order, req.user, requested, req.body);
       return customerView(order);
     });
     return res.json({ data: result });
@@ -254,8 +155,7 @@ ordersRouter.delete('/:orderId', requireRole('customer'), async (req, res, next)
   try {
     const orderId = parseOrderId(req.params.orderId);
     await changeStore((store) => {
-      const order = ownOrder(store, orderId, req.user);
-      if (order.status !== 'draft') throw orderError('INVALID_STATUS', 'ลบได้เฉพาะร่างคำสั่งซื้อ คำสั่งซื้อที่ส่งแล้วให้ใช้การยกเลิก');
+      checkDeletable(ownOrder(store, orderId, req.user));
       store.orders = store.orders.filter((row) => row.orderId !== orderId);
     });
     return res.json({ data: { orderId, deleted: true } });
@@ -268,14 +168,7 @@ ordersRouter.post('/:orderId/cancel', requireRole('customer'), async (req, res, 
     const reason = cleanText(req.body.reason);
     const result = await changeStore((store) => {
       const order = ownOrder(store, orderId, req.user);
-      if (!customerCancellable.has(order.status)) throw orderError('INVALID_STATUS', 'คำสั่งซื้อนี้ยกเลิกเองไม่ได้แล้ว กรุณาติดต่อแอดมิน');
-      const fromStatus = order.status;
-      const now = new Date().toISOString();
-      order.status = 'cancelled';
-      order.cancelledAt = now;
-      order.updatedAt = now;
-      addHistory(order, { fromStatus, toStatus: 'cancelled', actorRole: 'customer', actorId: req.user.uid, actorName: req.user.name, message: reason ? 'ยกเลิกคำสั่งซื้อ: ' + reason : 'ยกเลิกคำสั่งซื้อ' });
-      if (reason) order.messages.push({ messageId: randomUUID(), senderRole: 'customer', senderName: req.user.name, messageBody: reason, createdAt: now, visibleToCustomer: true });
+      cancelByCustomer(order, req.user, reason);
       return customerView(order);
     });
     return res.json({ data: result });
@@ -289,13 +182,7 @@ ordersRouter.post('/:orderId/reply', requireRole('customer'), async (req, res, n
     if (!messageBody) return badRequest(res, 'กรุณาพิมพ์ข้อมูลที่ต้องการส่งให้แอดมิน');
     const result = await changeStore((store) => {
       const order = ownOrder(store, orderId, req.user);
-      if (order.status !== 'need_information') throw orderError('INVALID_STATUS', 'คำสั่งซื้อนี้ไม่ได้รอข้อมูลเพิ่มเติม');
-      const now = new Date().toISOString();
-      order.messages.push({ messageId: randomUUID(), senderRole: 'customer', senderName: req.user.name, messageBody, createdAt: now, visibleToCustomer: true });
-      // Back to the assigned admin's queue for review.
-      order.status = 'assigned';
-      order.updatedAt = now;
-      addHistory(order, { fromStatus: 'need_information', toStatus: 'assigned', actorRole: 'customer', actorId: req.user.uid, actorName: req.user.name, message: 'ส่งข้อมูลเพิ่มเติมแล้ว' });
+      replyByCustomer(order, req.user, messageBody);
       return customerView(order);
     });
     return res.json({ data: result });
@@ -307,7 +194,7 @@ ordersRouter.post('/:orderId/reply', requireRole('customer'), async (req, res, n
 ordersRouter.get('/:orderId/reorder-items', requireRole('customer'), async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
-    const order = await ownOrderAnywhere(orderId, req.user);
+    const order = checkOwner(await loadOrder(orderId), req.user);
     const items = [];
     const unavailable = [];
     const adjusted = [];
@@ -353,26 +240,11 @@ ordersRouter.get('/admin/queue', requireRole('admin'), async (req, res, next) =>
 ordersRouter.post('/:orderId/assign', requireRole('admin'), async (req, res, next) => {
   try {
     const orderId = parseOrderId(req.params.orderId);
-    const adminName = req.user.name;
-    const adminId = req.user.uid;
     const note = cleanText(req.body.note);
     const result = await changeStore((store) => {
       const order = findOrder(store, orderId);
-      if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
-      const action = order.assignedAdminName ? 'reassigned' : 'assigned';
-      if (!['submitted', 'need_information', 'assigned', 'approved', 'erp_entry', 'preparing', 'shipped'].includes(order.status)) {
-        throw orderError('INVALID_STATUS', 'คำสั่งซื้อนี้ยังไม่อยู่ในขั้นตอนรับ Order');
-      }
-      const now = new Date().toISOString();
-      order.assignedAdminId = adminId;
-      order.assignedAdminName = adminName;
-      order.assignedAt = now;
-      order.updatedAt = now;
-      order.assignmentLog.unshift({ assignmentId: randomUUID(), adminId, adminName, action, note, createdAt: now });
-      const fromStatus = order.status;
-      if (fromStatus === 'submitted') order.status = 'assigned';
-      addHistory(order, { fromStatus, toStatus: order.status, actorRole: 'admin', actorId: adminId, actorName: adminName, message: (action === 'assigned' ? 'รับ' : 'โอน') + 'งานคำสั่งซื้อนี้' });
-      return { orderId, assignedAdminId: adminId, assignedAdminName: adminName, action, status: order.status };
+      const action = assignToAdmin(order, req.user, note);
+      return { orderId, assignedAdminId: req.user.uid, assignedAdminName: req.user.name, action, status: order.status };
     });
     return res.json({ data: result });
   } catch (error) { return handleOrderError(res, next, error); }
@@ -382,26 +254,10 @@ ordersRouter.post('/:orderId/status', requireRole('admin'), async (req, res, nex
   try {
     const orderId = parseOrderId(req.params.orderId);
     const toStatus = String(req.body.status || '').trim();
-    const actorName = req.user.name;
     const message = cleanText(req.body.message);
-    if (!toStatus) return badRequest(res, 'ข้อมูลคำขอไม่ถูกต้อง');
-    if (messageRequired.has(toStatus) && !message) return badRequest(res, 'กรุณาระบุเหตุผลหรือข้อมูลที่ต้องการจากลูกค้า');
+    checkStatusRequest(toStatus, message);
     const result = await changeStore((store) => {
-      const order = findOrder(store, orderId);
-      if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
-      const fromStatus = order.status;
-      if (!adminTransitions[fromStatus]?.includes(toStatus)) throw orderError('INVALID_STATUS', 'ไม่สามารถเปลี่ยนจาก ' + fromStatus + ' เป็น ' + toStatus);
-      if (order.assignedAdminId !== req.user.uid) throw orderError('INVALID_STATUS', 'กรุณารับช่วง Order ก่อนเปลี่ยนสถานะ');
-      const now = new Date().toISOString();
-      order.status = toStatus;
-      order.updatedAt = now;
-      if (toStatus === 'approved') order.approvedAt = now;
-      if (toStatus === 'completed') order.completedAt = now;
-      if (toStatus === 'rejected') order.rejectedAt = now;
-      addHistory(order, { fromStatus, toStatus, actorRole: 'admin', actorId: req.user.uid, actorName, message });
-      if (messageRequired.has(toStatus)) {
-        order.messages.push({ messageId: randomUUID(), senderRole: 'admin', senderName: actorName, messageBody: message, createdAt: now, visibleToCustomer: true });
-      }
+      const fromStatus = moveByAdmin(findOrder(store, orderId), req.user, toStatus, message);
       return { orderId, fromStatus, status: toStatus };
     });
     return res.json({ data: result });
@@ -414,7 +270,6 @@ ordersRouter.get('/:orderId', async (req, res, next) => {
     const order = await loadOrder(orderId);
     if (!order) throw orderError('NOT_FOUND', 'ไม่พบคำสั่งซื้อ');
     if (req.user.role === 'admin') return res.json({ data: order });
-    if (order.customerId !== req.user.uid) throw orderError('FORBIDDEN', 'คุณไม่มีสิทธิ์เข้าถึงคำสั่งซื้อนี้');
-    return res.json({ data: customerView(order) });
+    return res.json({ data: customerView(checkOwner(order, req.user)) });
   } catch (error) { return handleOrderError(res, next, error); }
 });

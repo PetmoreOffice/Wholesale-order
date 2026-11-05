@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { closedStatuses } from '../../../shared/orderWorkflow.js';
 import { normalizeStore } from './schema.js';
 
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data');
@@ -20,7 +21,7 @@ const backupName = /^orders-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z(?:-manual)?\.js
 let lastBackupAt = null;
 
 const ACTIVITY_LIMIT = 500;
-export const closedStatuses = ['completed', 'rejected', 'cancelled'];
+export { closedStatuses };
 
 export function findOrder(store, orderId) {
   return store.orders.find((order) => order.orderId === orderId);
