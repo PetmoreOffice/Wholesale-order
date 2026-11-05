@@ -161,15 +161,15 @@ components:
 
 **Creative North Star: "The Kibble Bag"**
 
-The app looks like a bright bag of pet food on a shop shelf. Deep bag teal is the printed panel: the navigation rail and the primary actions. White panels sit on a pale mint ground like labels. Kibble orange is the sticker that tells you what to do. Each order wears one hang tag. It is chamfered at the eyelet end and rounded at the other, and it says in Thai what happens next and who does it. Under the tag, a trail of paw prints shows how far the order has come.
+The app looks like a bright bag of pet food on a shop shelf. Deep bag teal is the printed panel: the navigation rail and the primary actions. White panels sit on a pale morning sky like labels, carrying on from the meadow on the sign-in page. Kibble orange is the sticker that tells you what to do. Each order wears one hang tag. It is chamfered at the eyelet end and rounded at the other, and it says in Thai what happens next and who does it. Under the tag, a trail of paw prints shows how far the order has come.
 
-Customers use it on phones and admins use it on office PCs during the day, so the type is large and friendly and the screens are light-only. The work surfaces (tables, forms, lists) are quiet and dense. The life comes from a small set of vendored react-bits effects that each stay in one place: a morning meadow on sign-in, sparks on every click, a dot field behind the work area, and count numerals that roll up. Every effect falls back to a still, complete state under reduced motion.
+Customers use it on phones and admins use it on office PCs during the day, so the type is large and friendly and the screens are light-only. The work surfaces (tables, forms, lists) are quiet and dense. The life comes from a small set of vendored react-bits effects that each stay in one place: a morning meadow on sign-in, a sky with slowly turning sun rays behind the work area, a hill with a walking dog and cat at the foot of the rail, and count numerals that roll up in a patch of sunlight. Every effect falls back to a still, complete state under reduced motion.
 
 The build leaves out three things on purpose: coloured status pills in tables, side-stripe accents, and kicker or eyebrow labels above headings. Status is always an icon plus written Thai words. Orange is reserved for one meaning.
 
 **Key Characteristics:**
-- Deep teal shell, mint ground, white panels with 20px corners, pill-shaped buttons.
-- Kibble orange only for "the viewer must act", plus sparks, paws and the brand mark.
+- Deep teal shell, morning-sky ground, white panels with 20px corners (24px on count blocks), pill-shaped buttons.
+- Kibble orange only for "the viewer must act", plus paws and the brand mark.
 - One hang tag per order view; a paw-print trail beneath it.
 - Mitr for headings and numerals, Anuphan for body, JetBrains Mono only for SKU and barcode.
 - Big rolling numerals for counts, numeral above label.
@@ -194,7 +194,7 @@ The palette is a pet-food bag: one deep teal, one loud orange, on calm mint and 
 - **Stop Red** (`danger-red` / `danger-soft`): rejected and cancelled orders, the "closed" hang tag, the stopped paw marker, destructive buttons, errors.
 
 ### Neutral
-- **Mint Ground** (`mint-ground`): page background, also visible through the hang tag's eyelet.
+- **Mint Ground** (`mint-ground`): page background where the sky does not reach (sign-in fallback, under overlays), also visible through the hang tag's eyelet.
 - **Panel White** (`panel-white`): panels, cards, sheets, dialogs, the top bar (at 95% with backdrop blur).
 - **Sunken Mint** (`sunken-mint`): table headers, row hover, the last-message strip, the neutral status tone.
 - **Ink** (`ink`): primary text and text on orange.
@@ -245,7 +245,7 @@ The rhythm is 20px panel padding, rows of about 14px vertical by 16–20px horiz
 
 ## Elevation & Depth
 
-Surfaces are flat at rest. Panels separate from the mint ground by colour and a 1px line border, not by shadow. Shadow is kept for things that sit physically above the page: the hang tag (which hangs), the current paw stop, and overlays. Dialog and sheet backdrops are a 45% dark wash.
+Surfaces are flat at rest. Panels separate from the sky by colour and a 1px line border, not by shadow. Shadow is kept for things that sit physically above the page: the hang tag (which hangs), the current paw stop, and overlays. Dialog and sheet backdrops are a 45% dark wash.
 
 ### Shadow Vocabulary
 - **Lift** (`box-shadow: 0 10px 28px -10px rgb(14 60 58 / 0.28)`): the current, enlarged paw stop.
@@ -306,14 +306,15 @@ One per order view, above the paw trail. It is never repeated in lists. It state
 The main route drawn as evenly spaced paw stops on a 3px line. Passed stops are 36px solid teal circles whose labels collapse to screen-reader text (a finished order keeps every label). The current stop is a larger 44px paw with the lift shadow. It is kibble orange only when the step waits on the viewer, and teal tint otherwise. A rejected or cancelled order shows a red-soft stop with a red X and "หยุดที่นี่" in place of the paw. Detours print a pill under the trail: kibble-soft for "แวะรอ: ข้อมูลจากลูกค้า", red-soft for "หยุด: ปฏิเสธ" and "หยุด: ยกเลิก". Drafts show no trail.
 
 ### Count Blocks, signature
-The numeral comes first and the label sits under it (a reversed definition list). Each block is a 20px-corner SpotlightCard with a soft pointer spotlight (orange on white blocks, white on the orange block). The numeral rolls up with CountUp over 1.1s on load. A `turn` block with a value above zero fills kibble orange with ink text and is the only block wrapped in a StarBorder: two white stars running a 2px track around the same 20px corner. Under reduced motion the full number is written out plainly and never left at 0.
+The numeral comes first and the label sits under it (a reversed definition list). Each block is a 24px-corner SpotlightCard with a patch of warm sunlight that follows the pointer (golden on white blocks, pale yellow on the orange block) and a soft lift shadow. The numeral rolls up with CountUp over 1.1s on load. A `turn` block with a value above zero fills kibble orange with ink text and is the only block with a moving edge: two sun-yellow glints run a 3px ring around it, drawn as a turning conic gradient behind the card (`.turn-glint-beam`, transform only, so the compositor runs it). It replaced the canvas StarBorder, which redrew every frame and was the app's largest idle CPU cost. Under reduced motion the full number is written out plainly and never left at 0.
 
 ### Effects inventory
 - **Meadow** (sign-in only, `features/auth/MeadowScene.jsx`, drawn in code with no images): sky gradient, low sun, drifting clouds, three ridges of hills, a dog and a cat walking the middle ridge, 140 swaying grass blades and a few leaves on the wind. Each layer shifts a little with the pointer for depth. Under reduced motion the scene holds still: clouds and animals rest in place, the leaves are left out and the pointer has no effect.
 - **BlurText** (sign-in headline): words blur in at a 120ms stagger. Under reduced motion the headline renders as plain text.
-- **DotGrid** (behind the work area, fixed, desktop-offset past the rail): 4px dots every 26px in pale teal (#CFE3DD) that warm to orange near the pointer, with no click shock. It is still under reduced motion.
-- **ClickSpark** (the whole shell): seven orange sparks per click over 420ms. Nothing waits on them, and they shorten to a brief fade under reduced motion.
-- **AnimatedContent** (page entrance): each area rises 18px over 0.5s once, keyed by area. Once it settles, transform and filter are cleared so fixed action bars and sheets are not trapped. It is skipped under reduced motion.
+- **Sky** (behind the work area, fixed, desktop-offset past the rail, `components/meadow/SkyBackdrop.jsx`): a pale blue-to-cream gradient, sun rays from the top-left corner that turn slowly (they no longer lean toward the pointer: restarting that transition on every move was the sky's largest cost), a sun glow, two hazy hills along the bottom. The rays turn on transform only, so the compositor runs them. Under reduced motion they hold still. Drifting pollen was tried and removed at the user's request (2026-11-05).
+- **Rail meadow** (foot of the desktop rail, `components/meadow/RailMeadow.jsx`): two ridges, a dog and a cat walking across on a full-width transform track, and grass that sways as three layers; the phone bottom bar has a fringe of grass on its top edge. Under reduced motion the animals rest on the ridge and the grass holds still.
+- **Clicks** carry no effect. ClickSpark (orange sparks, later falling leaves) was removed at the user's request (2026-11-05).
+- **AnimatedContent** (page entrance): each area sprouts up once, keyed by area: it rises 28px from 98.5% scale over 0.5s, transform and opacity only (an animated mask repainted the whole page each frame). Once it settles, transform and filter are cleared so fixed action bars and sheets are not trapped. It is skipped under reduced motion.
 - **Overlays:** dialogs fade and rise 8px over 200ms; sheets slide 24px from the right over 220ms, both on `cubic-bezier(0.16, 1, 0.3, 1)`.
 - A global reduced-motion rule clamps all CSS animation and transition to 0.01ms.
 
@@ -333,7 +334,7 @@ The numeral comes first and the label sits under it (a reversed definition list)
 - **Do** write status as icon plus Thai words; colour only reinforces it.
 - **Do** set order numbers, counts, quantities and dates in tabular figures, and SKU and barcode in JetBrains Mono 500 at full ink.
 - **Do** show counts as Mitr numerals above their label, rolling up with CountUp, and written out plainly under reduced motion.
-- **Do** keep each effect in its own place (the meadow behind sign-in, DotGrid behind the work area, ClickSpark on clicks, AnimatedContent on page entrance) and give each a still, complete reduced-motion state.
+- **Do** keep each effect in its own place (the meadow behind sign-in, the sky behind the work area, the meadow at the foot of the rail, AnimatedContent on page entrance) and give each a still, complete reduced-motion state.
 - **Do** use pill buttons, 20px panels, 10px inputs and chips, and teal-tinted soft shadows only for things that hang or float.
 - **Do** keep prices off every customer surface. Reference prices appear only on admin screens (product list column, order detail), and the API never sends them to customers.
 
