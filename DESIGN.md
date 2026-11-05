@@ -161,9 +161,9 @@ components:
 
 **Creative North Star: "The Kibble Bag"**
 
-The app looks like a bright bag of pet food on a shop shelf. Deep bag teal is the printed panel: the navigation rail, the sign-in side and the primary actions. White panels sit on a pale mint ground like labels. Kibble orange is the sticker that tells you what to do. Each order wears one hang tag. It is chamfered at the eyelet end and rounded at the other, and it says in Thai what happens next and who does it. Under the tag, a trail of paw prints shows how far the order has come.
+The app looks like a bright bag of pet food on a shop shelf. Deep bag teal is the printed panel: the navigation rail and the primary actions. White panels sit on a pale mint ground like labels. Kibble orange is the sticker that tells you what to do. Each order wears one hang tag. It is chamfered at the eyelet end and rounded at the other, and it says in Thai what happens next and who does it. Under the tag, a trail of paw prints shows how far the order has come.
 
-Customers use it on phones and admins use it on office PCs during the day, so the type is large and friendly and the screens are light-only. The work surfaces (tables, forms, lists) are quiet and dense. The life comes from a small set of vendored react-bits effects that each stay in one place: kibble balls tumbling on sign-in, sparks on every click, a dot field behind the work area, and count numerals that roll up. Every effect falls back to a still, complete state under reduced motion.
+Customers use it on phones and admins use it on office PCs during the day, so the type is large and friendly and the screens are light-only. The work surfaces (tables, forms, lists) are quiet and dense. The life comes from a small set of vendored react-bits effects that each stay in one place: a morning meadow on sign-in, sparks on every click, a dot field behind the work area, and count numerals that roll up. Every effect falls back to a still, complete state under reduced motion.
 
 The build leaves out three things on purpose: coloured status pills in tables, side-stripe accents, and kicker or eyebrow labels above headings. Status is always an icon plus written Thai words. Orange is reserved for one meaning.
 
@@ -180,13 +180,13 @@ The build leaves out three things on purpose: coloured status pills in tables, s
 The palette is a pet-food bag: one deep teal, one loud orange, on calm mint and white.
 
 ### Primary
-- **Bag Teal** (`bag-teal`): the desktop rail, the phone bottom bar, the sign-in panel, primary buttons, filled (passed) paw stops, the "road" hang tag and the "success" status tone. It means "we are on it".
+- **Bag Teal** (`bag-teal`): the desktop rail, the phone bottom bar, the meadow's foreground grass, primary buttons, filled (passed) paw stops, the "road" hang tag and the "success" status tone. It means "we are on it".
 - **Deep Bag Teal** (`bag-teal-deep`): rail hover, the "done" hang tag, and text on teal-tint surfaces.
 - **Rail Mint Text** (`bag-teal-soft`): inactive rail labels and secondary copy on teal.
 - **Teal Tint** (`bag-teal-tint`): selected list and table rows, secondary and quiet buttons, hover on icon buttons, the current paw when the step is not the viewer's.
 
 ### Secondary
-- **Kibble Orange** (`kibble-orange`, also exposed as `--turn`): the viewer's turn. It fills the "yours" hang tag, the "ถึงตาคุณ" chip in lists, the "รอรับงาน" and "ถึงตาคุณ" count blocks when their value is above zero, the admin "ค้าง" stale marker, the cart count on the rail, and the current paw when the step waits on the viewer. Outside that meaning it appears only as a material: click sparks, DotGrid's active dots, Ballpit kibble and the paw on the brand mark. Text on it is always dark ink.
+- **Kibble Orange** (`kibble-orange`, also exposed as `--turn`): the viewer's turn. It fills the "yours" hang tag, the "ถึงตาคุณ" chip in lists, the "รอรับงาน" and "ถึงตาคุณ" count blocks when their value is above zero, the admin "ค้าง" stale marker, the cart count on the rail, and the current paw when the step waits on the viewer. Outside that meaning it appears only as a material: click sparks, DotGrid's active dots and the paw on the brand mark. Text on it is always dark ink.
 - **Kibble Soft** (`kibble-soft`): text selection, and the "แวะรอ: ข้อมูลจากลูกค้า" detour note under the trail.
 
 ### Tertiary
@@ -220,7 +220,7 @@ The palette is a pet-food bag: one deep teal, one loud orange, on calm mint and 
 Loaded weights: Anuphan 400/500/600/700, Mitr 400/500/600, JetBrains Mono 500. `font-synthesis: none` is set, so unloaded weights fall back to the nearest loaded one rather than being faked.
 
 ### Hierarchy
-- **Display** (Mitr 500, 40px, 1.15): the sign-in headline "สั่งอาหารสัตว์ทั้งร้าน ในไม่กี่คลิก" only.
+- **Display** (Mitr 500, 52px, 1.1, brand-deep on the sky): the sign-in headline "สั่งอาหารสัตว์ทั้งร้าน ในไม่กี่คลิก" only.
 - **Headline** (Mitr 500, 28px on phones / 34px from sm, 1.3, balanced wrap): one page title per screen, via PageHeader.
 - **Numeral** (Mitr 500, 34px on phones / 46px from sm, line-height 1, tabular): count blocks.
 - **Title** (Mitr 500, 20px on phones / 24px from sm): the hang tag's next-step sentence.
@@ -241,7 +241,7 @@ The app is a rail plus a work area. From `lg` (1024px) there is a sticky 232px t
 
 Every screen opens with a PageHeader: the title and one line of context on the left, actions on the right (actions go full width on phones). Count blocks follow as an equal-column grid (gaps of 8px, 16px from sm; the admin queue uses two columns on phones). Then comes the work. The customer home is a list and detail pair from `lg` (open orders on the left; the selected order, 420–520px, on the right with its tag above the trail). On phones, choosing an order navigates to it instead of opening a side panel.
 
-The rhythm is 20px panel padding, rows of about 14px vertical by 16–20px horizontal, and 20px between stacked blocks inside a panel. Lists are rows divided by hairlines inside one panel, not stacks of cards. Sign-in is a two-column frame from `lg` (5:6, teal story left, form right on mint). On phones the form stands alone.
+The rhythm is 20px panel padding, rows of about 14px vertical by 16–20px horizontal, and 20px between stacked blocks inside a panel. Lists are rows divided by hairlines inside one panel, not stacks of cards. Sign-in fills the screen with the meadow. From `lg` the headline sits in the sky on the left and the form on a 440px white card (24px corners, overlay shadow) on the right. On phones the card stands alone over the scene, and the "no account" note sits in white on the grass.
 
 ## Elevation & Depth
 
@@ -309,7 +309,7 @@ The main route drawn as evenly spaced paw stops on a 3px line. Passed stops are 
 The numeral comes first and the label sits under it (a reversed definition list). Each block is a 20px-corner SpotlightCard with a soft pointer spotlight (orange on white blocks, white on the orange block). The numeral rolls up with CountUp over 1.1s on load. A `turn` block with a value above zero fills kibble orange with ink text and is the only block wrapped in a StarBorder: two white stars running a 2px track around the same 20px corner. Under reduced motion the full number is written out plainly and never left at 0.
 
 ### Effects inventory
-- **Ballpit** (sign-in only): 55 satin kibble balls in orange and browns that tumble into their own box under the sign-in copy and cannot reach the text. It is lazy-loaded WebGL on desktop. Under reduced motion it is omitted and the box stays empty.
+- **Meadow** (sign-in only, `features/auth/MeadowScene.jsx`, drawn in code with no images): sky gradient, low sun, drifting clouds, three ridges of hills, a dog and a cat walking the middle ridge, 140 swaying grass blades and a few leaves on the wind. Each layer shifts a little with the pointer for depth. Under reduced motion the scene holds still: clouds and animals rest in place, the leaves are left out and the pointer has no effect.
 - **BlurText** (sign-in headline): words blur in at a 120ms stagger. Under reduced motion the headline renders as plain text.
 - **DotGrid** (behind the work area, fixed, desktop-offset past the rail): 4px dots every 26px in pale teal (#CFE3DD) that warm to orange near the pointer, with no click shock. It is still under reduced motion.
 - **ClickSpark** (the whole shell): seven orange sparks per click over 420ms. Nothing waits on them, and they shorten to a brief fade under reduced motion.
@@ -333,7 +333,7 @@ The numeral comes first and the label sits under it (a reversed definition list)
 - **Do** write status as icon plus Thai words; colour only reinforces it.
 - **Do** set order numbers, counts, quantities and dates in tabular figures, and SKU and barcode in JetBrains Mono 500 at full ink.
 - **Do** show counts as Mitr numerals above their label, rolling up with CountUp, and written out plainly under reduced motion.
-- **Do** keep each effect in its own place (Ballpit in its box on sign-in, DotGrid behind the work area, ClickSpark on clicks, AnimatedContent on page entrance) and give each a still, complete reduced-motion state.
+- **Do** keep each effect in its own place (the meadow behind sign-in, DotGrid behind the work area, ClickSpark on clicks, AnimatedContent on page entrance) and give each a still, complete reduced-motion state.
 - **Do** use pill buttons, 20px panels, 10px inputs and chips, and teal-tinted soft shadows only for things that hang or float.
 - **Do** keep prices off every customer surface. Reference prices appear only on admin screens (product list column, order detail), and the API never sends them to customers.
 
