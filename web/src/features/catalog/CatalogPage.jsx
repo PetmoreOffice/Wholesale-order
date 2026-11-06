@@ -189,8 +189,6 @@ export default function CatalogPage() {
   const inCart = new Map(cart.map(item => [item.goodsId, item.quantity]));
   // Prices are admin-only; the API does not send them to customers either.
   const showPrice = session.role === 'admin';
-  const firstSku = rows[0]?.sku;
-  const lastSku = rows.at(-1)?.sku;
 
   return (
     <div className="pb-20 lg:pb-0">
@@ -231,16 +229,11 @@ export default function CatalogPage() {
           )}
 
           <section ref={listRef} aria-labelledby="catalog-head" aria-busy={loading} className="scroll-mt-20 overflow-hidden rounded-xl border border-line bg-panel">
-            {/* The head names the stretch of shelf on screen, like a dictionary's guide words. */}
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-line px-4 py-3 sm:px-5">
               <h2 id="catalog-head" className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-[17px] font-semibold">
-                {loading ? 'กำลังโหลดสินค้า…' : rows.length ? (
-                  <>
-                    {scanShown ? <span>ผลค้นหารหัส <span className="sku text-[15px]">{scanShown.code}</span></span> : (
-                      <span className="sku text-[15px] font-bold">{firstSku}{lastSku !== firstSku && <> <span className="font-sans text-ink-3">ถึง</span> {lastSku}</>}</span>
-                    )}
-                  </>
-                ) : 'รายการสินค้า'}
+                {loading ? 'กำลังโหลดสินค้า…' : scanShown && rows.length
+                  ? <span>ผลค้นหารหัส <span className="sku text-[15px]">{scanShown.code}</span></span>
+                  : 'รายการสินค้า'}
               </h2>
               {!loading && totals.total > 0 && (
                 <p className="text-[15px] text-ink-2">
