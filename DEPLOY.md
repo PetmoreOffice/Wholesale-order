@@ -1,23 +1,24 @@
 # Deploy บน Windows Server
 
-ระบบรันเป็น **Node.js process ตัวเดียว** (เปิดโดย Task Scheduler) ที่ให้บริการทั้งหน้าเว็บและ API ส่วน **IIS** อยู่ด้านหน้าเพื่อทำ HTTPS
+ระบบรันเป็น **Node.js process ตัวเดียว** (เปิดโดย Task Scheduler) ที่ให้บริการทั้งหน้าเว็บและ API ที่ `127.0.0.1:3005` ผู้ใช้เข้าทาง **https://order.newgenman.com** ผ่าน **Cloudflare Tunnel**: โปรแกรม `cloudflared` บน server ต่อออกไปหา Cloudflare เอง จึงไม่ต้องเปิดพอร์ต 80/443 ที่เราเตอร์ ไม่ต้องมี IP สาธารณะคงที่ และ Cloudflare ออกใบรับรอง HTTPS ให้
 
 ```
-ผู้ใช้ ──HTTPS──▶ IIS (ใบรับรอง, port 443) ──▶ Node 127.0.0.1:3005 ─────────▶ SQL Server (SELECT เท่านั้น)
-                                              ├─ หน้าเว็บ (web/dist)          └─ Firebase Auth
-                                              └─ ข้อมูล Order (api/data)
+ผู้ใช้ ──HTTPS──▶ Cloudflare ◀──tunnel ขาออก── cloudflared ──▶ Node 127.0.0.1:3005 ──▶ SQL Server (SELECT เท่านั้น)
+                 (order.newgenman.com)          (บน server)    ├─ หน้าเว็บ (web/dist)  └─ Firebase Auth
+                                                               └─ ข้อมูล Order (api/data)
 ```
 
 > HTTPS จำเป็น: browser เปิดกล้องสแกนบาร์โค้ดให้เฉพาะเว็บ HTTPS และ Firebase ต้องรู้จัก domain ของเว็บ
+
+> สิ่งที่ออกอินเทอร์เน็ตมีแค่หน้าเว็บผ่าน Cloudflare: Node ฟังที่ 127.0.0.1 เท่านั้น และ **ห้ามเปิด SQL Server port 1433 ออกอินเทอร์เน็ต**
 
 > รัน Node เพียง **1 process / 1 instance** เท่านั้น ห้ามเปิด dev server ของ API, PM2 cluster หรือ service อีกตัวชี้ `api/data` เดียวกัน เพราะ write queue และ lock การเปลี่ยนสิทธิ์ผู้ใช้ทำงานภายใน process
 
 ## 1. เตรียมเครื่อง (ครั้งเดียว)
 
 1. ติดตั้ง **Node.js 24 LTS** และ **Git for Windows** (รอบแก้นี้ทดสอบด้วย Node 24.15.0) ตรวจสถานะรุ่นจาก [Node.js releases](https://nodejs.org/en/about/previous-releases)
-2. ติดตั้ง **IIS** พร้อมโมดูล **URL Rewrite** และ **Application Request Routing (ARR)**
-   แล้วเปิด proxy: IIS Manager → คลิกชื่อ server → *Application Request Routing Cache* → *Server Proxy Settings* → ติ๊ก **Enable proxy** → Apply
-3. ตรวจว่าเครื่องนี้ต่อ SQL Server ได้ (port 1433 / firewall) และ login SQL ที่ใช้ควรมีสิทธิ์ **db_datareader เท่านั้น**
+2. ตรวจว่าเครื่องนี้ต่อ SQL Server ได้ (port 1433 ภายในวงแลน / firewall) และ login SQL ที่ใช้ควรมีสิทธิ์ **db_datareader เท่านั้น** (ชั้นป้องกันเพิ่มจาก `assertReadOnly()` ในโค้ด)
+3. ไม่ต้องติดตั้ง IIS เมื่อใช้ Cloudflare Tunnel (IIS เป็นทางเลือกสำหรับเข้าจากวงแลน ดูท้ายหัวข้อ 5)
 
 ## 2. ดึงโค้ด
 
@@ -42,14 +43,14 @@ cd Wholesale-order
 
 ```ini
 GOOGLE_APPLICATION_CREDENTIALS=C:\apps\Wholesale-order\api\secrets\<ชื่อไฟล์ key>.json
-CLIENT_ORIGIN=https://order.yourcompany.co.th
+CLIENT_ORIGIN=https://order.newgenman.com
 # ไม่บังคับ: เก็บถาวร Order ที่ปิดแล้วหลังกี่วัน (0 = ปิด)
 ORDER_ARCHIVE_DAYS=365
 ```
 
 `NODE_ENV=production`, `HOST=127.0.0.1` และ `PORT=3005` ถูกตั้งให้โดยสคริปต์ติดตั้งอยู่แล้ว (port 3000 และ 3001 บน server ถูกโปรเจคอื่นใช้อยู่)
 
-> ถ้าต้องเปลี่ยน port: ใช้ `install-task.ps1 -Port <เลข>` และแก้เลขเดียวกันใน `deploy\windows\iis\web.config`
+> ถ้าต้องเปลี่ยน port: ใช้ `install-task.ps1 -Port <เลข>` และแก้เลขเดียวกันใน Public hostname ของ Cloudflare Tunnel (และใน `deploy\windows\iis\web.config` ถ้าใช้ IIS)
 > ตรวจ `node -v` และผลต่อโปรเจกต์อื่นก่อนเปลี่ยน Node ของเครื่อง หากใช้ Node แยกตำแหน่ง ให้ระบุ `install-task.ps1 -Node "C:\path\to\node.exe"` และใช้ Node รุ่นเดียวกันตอน build/test
 
 ## 4. Build และตั้งให้รันตลอด (Task Scheduler)
@@ -90,20 +91,38 @@ Stop-App WholesaleOrder (Resolve-Path .\api).Path
 > `.\deploy\windows\install-service.ps1 -Nssm "C:\Tools\nssm-2.24\win64\nssm.exe"` แทน `install-task.ps1` (log อยู่ที่ `api\logs\service*.log`)
 > ใช้ **อย่างใดอย่างหนึ่ง** เท่านั้น ห้ามติดตั้งทั้งสองแบบพร้อมกัน
 
-## 5. ตั้ง IIS (HTTPS)
+## 5. เปิดใช้บน order.newgenman.com (Cloudflare Tunnel)
+
+ทำหลังข้อ 4 ผ่านแล้ว (`http://127.0.0.1:3005/api/health` ตอบ `connected`) บนเครื่องเดียวกัน
+
+1. **สร้าง tunnel:** one.dash.cloudflare.com → *Networks* → *Tunnels* → **Create a tunnel** → *Cloudflared* → ตั้งชื่อ `wholesale-order` (อย่าแตะ tunnel อื่นที่มีอยู่)
+2. **ติดตั้ง cloudflared:** เลือก Windows แล้วคัดลอกคำสั่งที่ Cloudflare ให้มารันใน PowerShell แบบ Administrator จะติดตั้งเป็น Windows service ที่เปิดเองหลังรีสตาร์ท
+   > คำสั่งนี้มี **token ลับ** ของ tunnel: อย่าส่งทางแชทหรืออีเมล และปิดบังในภาพหน้าจอ ถ้าหลุดให้ *Refresh token* ใน Cloudflare
+3. **Public hostname:** Subdomain `order` · Domain `newgenman.com` · Service **HTTP** → `localhost:3005` (Cloudflare สร้าง DNS record ให้เอง)
+4. **Cloudflare SSL/TLS** ของโดเมน newgenman.com → *Edge Certificates* → เปิด **Always Use HTTPS**
+5. **Firebase Console** → Authentication → Settings → **Authorized domains** → เพิ่ม `order.newgenman.com`
+6. **Firebase Console** → Authentication → Settings → **User actions** → ปิด **Enable create (sign-up)** (บริษัทสร้างบัญชีให้ทุกคนเอง)
+7. ตรวจว่า `api\.env` มี `CLIENT_ORIGIN=https://order.newgenman.com` (ไม่มี `/` ท้าย) ถ้าแก้ ให้รีสตาร์ทแอปด้วย `Stop-App` แล้ว `Start-ScheduledTask WholesaleOrder`
+
+ทดสอบ: เปิด `https://order.newgenman.com/api/health` ต้องเห็น `connected` แล้วล็อกอินบนมือถือด้วย 4G (ไม่ใช่ Wi‑Fi บริษัท) และลองกล้องสแกน
+
+```powershell
+Get-Service cloudflared            # ต้อง Running
+```
+
+### ทางเลือก: IIS สำหรับเข้าจากวงแลน
+
+ไม่จำเป็นเมื่อใช้ Tunnel ใช้เฉพาะถ้าต้องการให้เครื่องในวงแลนเข้าโดยไม่ผ่านอินเทอร์เน็ต ต้องติดตั้ง IIS พร้อม **URL Rewrite** และ **Application Request Routing (ARR)** แล้วเปิด proxy: IIS Manager → คลิกชื่อ server → *Application Request Routing Cache* → *Server Proxy Settings* → ติ๊ก **Enable proxy** → Apply
 
 1. สร้างโฟลเดอร์ว่าง เช่น `C:\inetpub\wholesale-order` แล้ว copy `deploy\windows\iis\web.config` ไปไว้ในนั้น
 2. IIS Manager → *Sites* → *Add Website*
    - Physical path: `C:\inetpub\wholesale-order`
-   - Binding: **https**, port 443, host name `order.yourcompany.co.th`, เลือกใบรับรอง
+   - Binding: **https**, port 443, host name ของวงแลน, เลือกใบรับรอง
    - เพิ่ม binding **http** port 80 ด้วย (web.config จะ redirect ไป https ให้)
 3. ใบรับรอง:
    - มี domain จริงที่ออกอินเทอร์เน็ตได้ → ใช้ **win-acme** (https://www.win-acme.com) ขอ Let's Encrypt ฟรีและต่ออายุอัตโนมัติ
    - ใช้เฉพาะในวงแลน → ใช้ใบรับรองจาก CA ภายในบริษัท (ให้เครื่องลูกค้า/มือถือเชื่อถือ CA นั้น)
-4. Firebase Console → Authentication → Settings → **Authorized domains** → เพิ่ม `order.yourcompany.co.th`
-5. Firebase Console → Authentication → Settings → **User actions** → ปิด **Enable create (sign-up)**
-
-เปิด `https://order.yourcompany.co.th` ควรเห็นหน้าเข้าสู่ระบบ
+4. เพิ่ม host name นั้นใน Firebase **Authorized domains** และใน `CLIENT_ORIGIN` (ใส่หลายค่าคั่นด้วยจุลภาคได้)
 
 ## 6. สำรองข้อมูลออกนอกเครื่อง
 
@@ -128,7 +147,7 @@ cd C:\apps\Wholesale-order
 
 ระบบจะหยุดประมาณ 1 นาทีระหว่างติดตั้งและ build — `.env`, `secrets` และ `data` ไม่ถูกแตะ
 
-### อัปเดตรอบแก้ Audit นี้
+### อัปเดตแบบมีจุดย้อนกลับ (แนะนำทุกครั้ง)
 
 ไฟล์แก้ไขต้องถูก commit/push ไปยัง branch ที่ server ใช้งานก่อน `update.ps1` จึงจะ pull มาได้ หากส่งเป็น ZIP ให้แตกไปยังโฟลเดอร์ release ใหม่แล้วนำ `.env`, service-account key และข้อมูล server ปัจจุบันไปใช้ ห้ามนำ `api/data` จากเครื่องพัฒนาทับข้อมูล server
 
@@ -159,7 +178,15 @@ Invoke-RestMethod http://127.0.0.1:3005/api/health
 
 สคริปต์ตรวจ read-only guard, schema ของ orders.json และ regression tests ที่ใช้ mock ก่อน build ถ้าขั้นตอนใดล้มเหลวอย่าถือว่า deploy สำเร็จ แม้ finally จะพยายามเปิด service กลับก็ตาม schema ที่ผิดจะถูกปฏิเสธเพื่อไม่ให้ข้อมูลถูกแทนด้วยค่าว่าง
 
-ทดสอบผ่าน HTTPS: เข้าสู่ระบบลูกค้า/แอดมิน, เปิดสินค้า, เปลี่ยนหมวดแล้วกด Back/Forward, ตรวจ Order เดิม และทดสอบบันทึกร่าง/ส่ง Order ด้วยบัญชีทดสอบที่กำหนดไว้ `/api/health` ยืนยันการเชื่อมต่อ DB แต่ไม่ได้ยืนยัน Firebase หรือทุก workflow
+ทดสอบผ่าน `https://order.newgenman.com` (`/api/health` ยืนยันแค่การต่อ DB ไม่ได้ยืนยัน Firebase หรือทุก workflow):
+
+- [ ] เข้าสู่ระบบลูกค้า และแอดมิน (คนละเบราว์เซอร์)
+- [ ] หน้าสินค้า: สินค้าแสดงในหน่วยเล็กสุด กด **เพิ่ม** สินค้าที่มีหลายหน่วย (เช่น `PC` กับ `หีบx24`) ต้องขึ้นหน้าต่างเลือกหน่วย และแต่ละหน่วยเป็นคนละบรรทัดในตะกร้า
+- [ ] ค้นหาสินค้าประเภท KK (เช่น `WINTER SALE`) ต้องไม่เจอ และบัญชีลูกค้าไม่เห็นราคา
+- [ ] เปลี่ยนหมวดแล้วกด Back/Forward หมวดยังอยู่ และตรวจ Order เดิม
+- [ ] บันทึกร่าง → ส่ง Order ด้วยบัญชีทดสอบ แล้วแอดมินรับงานได้
+- [ ] มือถือผ่าน 4G: ล็อกอิน, กล้องสแกนบาร์โค้ด, ตะกร้าเลื่อนขึ้นจากล่าง
+- [ ] ความลื่นบนเครื่องที่พนักงานใช้จริง (พื้นหลังทุ่งหญ้า)
 
 ### ย้อนกลับเมื่ออัปเดตไม่สำเร็จ
 
@@ -179,13 +206,16 @@ Invoke-RestMethod http://127.0.0.1:3005/api/health
 
 คง `api/data` ปัจจุบันไว้เมื่อย้อนเฉพาะโค้ด เพราะการ restore backup จะทำให้ Order หลังเวลาสำรองหาย หากจำเป็นต้องกู้ข้อมูลจริง ให้เก็บสำเนาข้อมูลปัจจุบันก่อน แล้วกู้ทั้งชุด `data` รวม archive ขณะ service หยุดอยู่ หลังตรวจผลแล้วเลือก branch สำหรับอัปเดตครั้งถัดไปอีกครั้ง (สถานะ detached HEAD ใช้สำหรับ rollback)
 
-รายละเอียด reverse proxy อ้างอิง [Microsoft: URL Rewrite + ARR](https://learn.microsoft.com/en-us/iis/extensions/url-rewrite-module/reverse-proxy-with-url-rewrite-v2-and-application-request-routing)
+อ้างอิง: [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) · ถ้าใช้ IIS: [Microsoft: URL Rewrite + ARR](https://learn.microsoft.com/en-us/iis/extensions/url-rewrite-module/reverse-proxy-with-url-rewrite-v2-and-application-request-routing)
 
 ## แก้ปัญหา
 
 | อาการ | ตรวจ |
 |---|---|
-| หน้าเว็บขึ้น 502 | แอปไม่ทำงาน: `Get-ScheduledTask WholesaleOrder` และดู `api\logs\app.log` (ถ้าใช้ NSSM: `Get-Service WholesaleOrder` และ `api\logs\service-error.log`) |
+| Cloudflare ขึ้น Error 1033 | tunnel หลุด: `Get-Service cloudflared` แล้ว `Start-Service cloudflared` และดูสถานะ tunnel ใน Zero Trust |
+| เรียก API แล้วได้ CORS error | `CLIENT_ORIGIN` ใน `api\.env` ไม่ตรงกับ `https://order.newgenman.com` (ไม่มี `/` ท้าย) แก้แล้วรีสตาร์ทแอป |
+| จำนวนในหมวดยังไม่ตรงหลังอัปเดต | ต้นไม้หมวดถูก cache ไว้ 10 นาที รอสักครู่หรือรีสตาร์ทแอป |
+| หน้าเว็บขึ้น 502 / Bad gateway | แอปไม่ทำงาน: `Get-ScheduledTask WholesaleOrder` และดู `api\logs\app.log` (ถ้าใช้ NSSM: `Get-Service WholesaleOrder` และ `api\logs\service-error.log`) |
 | เข้าสู่ระบบไม่ได้ / auth/unauthorized-domain | ยังไม่ได้เพิ่ม domain ใน Firebase Authorized domains |
 | ปุ่มสแกนเปิดกล้องไม่ได้ | เปิดผ่าน http หรือ IP แทน https |
 | สินค้าไม่ขึ้น | `Invoke-RestMethod http://127.0.0.1:3005/api/health` — ถ้า `database: unavailable` ตรวจค่า SQL ใน `api\.env` และ firewall |
