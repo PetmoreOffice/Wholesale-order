@@ -28,21 +28,24 @@ function DrawerClose({
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />
 }
 
-function DrawerOverlay({
+// forwardRef: Radix's Presence hands the overlay a ref, which a plain function component drops
+// (React warned on every phone drawer). The scrim uses the app's teal-ink tint, like the dialog.
+const DrawerOverlay = React.forwardRef(function DrawerOverlay({
   className,
   ...props
-}) {
+}, ref) {
   return (
     <DrawerPrimitive.Overlay
+      ref={ref}
       data-slot="drawer-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-[rgb(10_40_38/0.5)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
     />
   )
-}
+})
 
 function DrawerContent({
   className,

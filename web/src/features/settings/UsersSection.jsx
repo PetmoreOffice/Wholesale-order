@@ -144,7 +144,7 @@ export function UsersSection() {
       title="ผู้ใช้งาน"
       description="ดูว่าใครกำลังใช้งาน เพิ่มบัญชีให้ลูกค้าหรือแอดมิน และปิดบัญชีที่ไม่ใช้แล้ว · อัปเดตอัตโนมัติทุก 30 วินาที"
       actions={<>
-        <Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชรายชื่อ"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /></Button>
+        <Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชรายชื่อ"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /> รีเฟรช</Button>
         <Button type="button" size="lg" onClick={() => setEditing({})}><UserPlus aria-hidden="true" /> เพิ่มผู้ใช้</Button>
       </>}
     >

@@ -56,7 +56,7 @@ export function DataSection() {
       title="ข้อมูลและการสำรอง"
       description="ไฟล์ข้อมูล Order สำรองอัตโนมัติทุกชั่วโมงที่มีการเปลี่ยนแปลง เก็บย้อนหลัง 30 วัน ควรดาวน์โหลดเก็บไว้นอกเครื่อง server สม่ำเสมอ"
       actions={<>
-        <Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชข้อมูล"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /></Button>
+        <Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชข้อมูล"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /> รีเฟรช</Button>
         <Button type="button" variant="outline" size="lg" disabled={Boolean(busy)} onClick={exportNow}><Download aria-hidden="true" /> {busy === 'export' ? 'กำลังดาวน์โหลด…' : 'ดาวน์โหลดข้อมูลปัจจุบัน'}</Button>
         <Button type="button" size="lg" disabled={Boolean(busy)} onClick={backupNow}><DatabaseBackup aria-hidden="true" /> {busy === 'backup' ? 'กำลังสำรอง…' : 'สำรองตอนนี้'}</Button>
       </>}
