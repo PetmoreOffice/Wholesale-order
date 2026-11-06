@@ -40,7 +40,7 @@ export function ActivitySection() {
       id="activity"
       title="บันทึกกิจกรรม"
       description="ใครทำอะไรกับบัญชีผู้ใช้และข้อมูลระบบ เมื่อไร · เก็บล่าสุด 500 รายการ การเปลี่ยนสถานะคำสั่งซื้อดูได้ในประวัติของแต่ละคำสั่งซื้อ"
-      actions={<Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชบันทึกกิจกรรม"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /></Button>}
+      actions={<Button type="button" variant="outline" size="lg" disabled={isFetching} onClick={() => refetch()} aria-label="รีเฟรชบันทึกกิจกรรม"><RefreshCw aria-hidden="true" className={cn(isFetching && 'animate-spin')} /> รีเฟรช</Button>}
     >
       {error && !data ? (
         <StateBlock tone="danger" title="โหลดบันทึกกิจกรรมไม่สำเร็จ" action={<Button variant="outline" onClick={() => refetch()}>ลองใหม่</Button>}>{error.message}</StateBlock>
