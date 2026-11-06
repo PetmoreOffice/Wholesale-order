@@ -332,7 +332,7 @@ const BlurText = ({
       <motion.span
         aria-hidden="true"
         key={piece.key}
-        className="inline-block will-change-[transform,filter,opacity]"
+        className="inline-block"
         style={style}
         initial={firstPhase === 'rest' ? false : fromSnapshot}
         animate={target}
