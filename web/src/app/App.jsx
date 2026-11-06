@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { onIdTokenChanged, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/firebase';
 import { demoMode, queryClient } from '@/lib/api';
+import { observeSession } from '@/lib/observeSession';
 import { SessionContext } from '@/lib/session';
 import { Button } from '@/components/ui/button';
 import { AppShell } from './AppShell.jsx';
@@ -28,35 +29,44 @@ function GateMessage({ title, children }) {
 }
 
 function useSessionState() {
-  const [state, setState] = useState(() => ({ loading: !demoMode, session: null }));
+  const [state, setState] = useState(() => ({ loading: !demoMode, session: null, error: '' }));
   useEffect(() => {
     if (demoMode) {
-      import('@/demo/demoApi.js').then(({ demoSession }) => setState({ loading: false, session: demoSession() }));
+      import('@/demo/demoApi.js').then(({ demoSession }) => setState({ loading: false, session: demoSession(), error: '' }));
       return undefined;
     }
     if (!firebaseConfigured) return undefined;
-    return onIdTokenChanged(auth, async (user) => {
-      if (!user) {
-        queryClient.clear();
-        setState({ loading: false, session: null });
-        return;
-      }
-      const token = await user.getIdTokenResult();
-      // Accounts need a role set by an admin; the API refuses the rest, so say so here too.
-      const role = ['admin', 'customer'].includes(token.claims.role) ? token.claims.role : null;
-      setState({ loading: false, session: { uid: user.uid, name: user.displayName || user.email, email: user.email, role } });
+    // observeSession always ends loading (a failed token read shows an error instead of an endless
+    // spinner) and drops token reads that finish after a sign-out or an account switch.
+    return observeSession(listener => onIdTokenChanged(auth, (user) => {
+      if (!user) queryClient.clear();
+      return listener(user);
+    }), {
+      loading: (loading) => setState(current => ({ ...current, loading })),
+      session: (session) => setState(current => ({ ...current, session })),
+      error: (error) => setState(current => ({ ...current, error }))
     });
   }, []);
   return state;
 }
 
 export function App() {
-  const { loading, session } = useSessionState();
+  const { loading, session, error } = useSessionState();
 
   if (!firebaseConfigured && !demoMode) {
     return <GateMessage title="ยังไม่ได้เชื่อม Firebase">คัดลอก <code>.env.firebase.example</code> เป็น <code>.env</code> แล้วกรอกค่า Firebase Web App ก่อนเริ่มใช้งาน</GateMessage>;
   }
-  if (loading) return <GateMessage title="กำลังตรวจสอบการเข้าสู่ระบบ…" />;
+  // Firebase renews the token about hourly and observeSession reports loading again; a signed-in
+  // user keeps working meanwhile instead of seeing the gate flash over the app.
+  if (loading && !session) return <GateMessage title="กำลังตรวจสอบการเข้าสู่ระบบ…" />;
+  if (error) {
+    return (
+      <GateMessage title="ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ">
+        <p>{error}</p>
+        <Button type="button" variant="outline" className="mt-6" onClick={() => window.location.reload()}>ลองใหม่</Button>
+      </GateMessage>
+    );
+  }
   if (!session) return <LoginPage />;
   if (!session.role) {
     return (
