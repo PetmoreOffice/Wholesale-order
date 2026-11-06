@@ -1,5 +1,6 @@
 import { firebaseAuth } from '../config/firebase.js';
 import { markSeen } from '../users/presence.js';
+import { accountRateLimit } from './rate-limit.js';
 
 export const roles = ['admin', 'customer'];
 
@@ -44,7 +45,7 @@ export async function requireAuth(req, res, next) {
     role: decoded.role
   };
   markSeen(decoded.uid);
-  return next();
+  return accountRateLimit(req, res, next);
 }
 
 export function requireRole(...allowed) {

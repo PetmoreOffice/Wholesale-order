@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { firebaseAuth } from '../config/firebase.js';
 import { Router } from 'express';
 import { query } from '../config/db.js';
@@ -60,6 +60,18 @@ async function resolveItems(items) {
   });
 }
 
+// A retried creation (lost response, double click, reload) carries the same requestId and must
+// return the order it already made. The key ties the request to its account; the hash ties it
+// to its content, so reusing an id for a different order is refused rather than ignored.
+async function replayCreation(store, requestKey, requestHash) {
+  const previous = store.creationRequests?.[requestKey];
+  if (!previous) return null;
+  if (previous.hash !== requestHash) throw orderError('INVALID_STATUS', 'คำขอนี้เคยใช้กับข้อมูลอื่นแล้ว กรุณาตรวจสอบคำสั่งซื้อ');
+  const existing = findOrder(store, previous.orderId) || await findArchivedOrder(previous.orderId);
+  if (!existing) throw orderError('INVALID_STATUS', 'คำสั่งซื้อจากคำขอนี้ถูกลบแล้ว กรุณาเริ่มรายการใหม่');
+  return existing;
+}
+
 ordersRouter.get('/admin/customer', requireRole('admin'), async (req, res, next) => {
   const email = String(req.query.email || '').trim();
   if (!email || email.length > 254) return badRequest(res, 'กรอกอีเมลลูกค้า');
@@ -98,8 +110,23 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
     }
     const initialStatus = assisted || req.body.submit === true ? 'submitted' : 'draft';
     if (!customerName) return badRequest(res, 'กรุณาระบุชื่อลูกค้าหรือบริษัท');
-    const products = await resolveItems(req.body.items);
-    const order = await changeStore((store) => {
+    const requestId = req.body.requestId;
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) return badRequest(res, 'กรุณาโหลดหน้าเว็บใหม่ก่อนสร้างคำสั่งซื้อ');
+    const requestedItems = checkItemList(req.body.items);
+    const requestKey = createHash('sha256').update(req.user.uid + ':' + requestId).digest('hex');
+    const requestHash = createHash('sha256').update(JSON.stringify({
+      customerId, initialStatus, orderSource: assisted ? req.body.orderSource : 'self', items: requestedItems,
+      deliveryDetails: cleanText(req.body.deliveryDetails), customerNote: cleanText(req.body.customerNote)
+    })).digest('hex');
+    // A retry answers from the store without asking SQL again: the products may have changed
+    // since the order was made, and the order stands as it was.
+    const earlier = await replayCreation(await readStore(), requestKey, requestHash);
+    if (earlier) return res.status(201).json({ data: assisted ? earlier : customerView(earlier) });
+    const products = await resolveItems(requestedItems);
+    const order = await changeStore(async (store) => {
+      // Two copies of the same request can both pass the check above; only the first creates.
+      const repeat = await replayCreation(store, requestKey, requestHash);
+      if (repeat) return repeat;
       const orderId = store.nextOrderId++;
       const now = new Date().toISOString();
       const created = {
@@ -126,6 +153,8 @@ ordersRouter.post('/drafts', requireRole('customer', 'admin'), async (req, res, 
       };
       addHistory(created, { fromStatus: null, toStatus: initialStatus, actorRole: req.user.role, actorId: req.user.uid, actorName: req.user.name, message: assisted ? 'สร้างคำสั่งซื้อแทนลูกค้า' : initialStatus === 'submitted' ? 'ยืนยันสั่งซื้อ' : 'บันทึกร่างคำสั่งซื้อ' });
       store.orders.unshift(created);
+      store.creationRequests ??= {};
+      store.creationRequests[requestKey] = { orderId, hash: requestHash };
       return created;
     });
     return res.status(201).json({ data: assisted ? order : customerView(order) });

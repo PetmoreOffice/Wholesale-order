@@ -46,6 +46,7 @@ await mock.module('../src/middleware/auth.js', { namedExports: {
 await mock.module('../src/orders/store.js', { namedExports: {
   ...realStore,
   readStore: async () => structuredClone(store),
+  findArchivedOrder: async () => null,
   changeStore: callback => {
     const result = writes.then(async () => {
       const copy = structuredClone(store);
@@ -95,4 +96,30 @@ test('concurrent cross-disable and cross-demotion retain an active admin', async
     assert.deepEqual((await Promise.all(requests)).map(res => res.statusCode), [200, 409]);
     assert.equal([...users.values()].filter(user => !user.disabled && user.customClaims.role === 'admin').length, 1);
   }
+});
+
+test('concurrent creation and retry after a lost response return one persisted order', async () => {
+  resetStore();
+  catalogRows = [{ goodsId: 1, name: 'Test', minimumOrder: 1 }];
+  const request = { user: { uid: 'customer', name: 'Test', role: 'customer' },
+    body: { requestId: 'retry-request-000001', submit: true, items: [{ goodsId: 1, quantity: 2 }] } };
+  const create = req => call(ordersRouter, '/drafts', req);
+  const [first, second] = await Promise.all([create(request), create(request)]);
+  assert.equal(first.statusCode, 201);
+  assert.equal(second.body.data.orderId, first.body.data.orderId);
+  assert.equal(store.orders.length, 2); // one existing draft + one new order
+  assert.equal(store.nextOrderId, 3);
+  // A retry must not revalidate a product that changed after the original commit.
+  catalogRows = [];
+  assert.equal((await create(request)).body.data.orderId, first.body.data.orderId);
+  const changed = structuredClone(request); changed.body.items[0].quantity = 3;
+  assert.equal((await create(changed)).statusCode, 409);
+  const missing = structuredClone(request); delete missing.body.requestId;
+  assert.equal((await create(missing)).statusCode, 400);
+  catalogRows = [{ goodsId: 1, name: 'Test', minimumOrder: 1 }];
+  const other = structuredClone(request); other.user.uid = 'another-customer';
+  assert.notEqual((await create(other)).body.data.orderId, first.body.data.orderId);
+  // A deleted draft must not let its request quietly create the order again.
+  store.orders = store.orders.filter(order => order.orderId !== first.body.data.orderId);
+  assert.equal((await create(request)).statusCode, 409);
 });

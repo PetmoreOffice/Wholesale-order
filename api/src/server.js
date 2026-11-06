@@ -35,6 +35,8 @@ app.use((_req, res, next) => {
   next();
 });
 app.use(express.json());
+// API answers are per account and change often: browsers and Cloudflare must not keep them.
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 if (!serveWeb) app.get('/', (_req, res) => {
   res.json({

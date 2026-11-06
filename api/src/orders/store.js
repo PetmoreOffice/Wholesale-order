@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { closedStatuses } from '../../../shared/orderWorkflow.js';
-import { normalizeStore } from './schema.js';
+import { normalizeStore, validateArchive } from './schema.js';
 
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data');
 const dataFile = path.join(dataDir, 'orders.json');
@@ -168,7 +168,7 @@ export async function changeStore(change) {
 async function readArchive(file) {
   try {
     const content = JSON.parse(await fs.readFile(file, 'utf8'));
-    return Array.isArray(content.orders) ? content.orders : [];
+    return validateArchive(content);
   } catch (error) {
     if (error.code === 'ENOENT') return [];
     throw error;

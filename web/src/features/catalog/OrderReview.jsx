@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Info } from 'lucide-react';
 import { api } from '@/lib/api';
+import { creationRequest } from '@/lib/creationRequest';
+import { useSession } from '@/lib/session';
 import { count } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,10 @@ export function OrderReview({ items, accountName, role, onSaved, onClose }) {
   const assisted = role === 'admin';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const session = useSession();
+  // The request id of the order being saved: a retry of the same content reuses it, so a lost
+  // response or a second click cannot create the order twice.
+  const pendingRequest = useRef(null);
   const [email, setEmail] = useState('');
   const [customer, setCustomer] = useState(null);
   const [source, setSource] = useState('phone');
@@ -63,17 +69,22 @@ export function OrderReview({ items, accountName, role, onSaved, onClose }) {
     setSaving(true);
     setSaveError('');
     try {
-      const data = await api('/orders/drafts', {
-        body: {
-          customerName: accountName,
-          customerId: assisted ? customer.uid : undefined,
-          orderSource: assisted ? source : undefined,
-          submit,
-          deliveryDetails: delivery,
-          customerNote: note,
-          items: items.map(item => ({ goodsId: item.goodsId, quantity: item.quantity }))
-        }
-      });
+      const payload = {
+        customerName: accountName,
+        customerId: assisted ? customer.uid : undefined,
+        orderSource: assisted ? source : undefined,
+        submit,
+        deliveryDetails: delivery,
+        customerNote: note,
+        items: items.map(item => ({ goodsId: item.goodsId, quantity: item.quantity }))
+      };
+      const signature = JSON.stringify(payload);
+      if (pendingRequest.current?.signature !== signature) {
+        pendingRequest.current = { signature, ...await creationRequest(session.uid, payload) };
+      }
+      const data = await api('/orders/drafts', { body: { ...payload, requestId: pendingRequest.current.id } });
+      pendingRequest.current.clear();
+      pendingRequest.current = null;
       setOrder(data.data);
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onSaved?.();
