@@ -24,8 +24,8 @@ export const productJoins = `
   LEFT JOIN dbo.UOFQTY u ON u.UTQ_KEY = g.GOODS_UTQ`;
 
 // Numbers each goods row within its SKU and unit size. Several goods rows often share both
-// (alternate barcodes, L-prefixed codes) at the same price, so rank 1 is the row coded like
-// the SKU, then the oldest. Keep `sizeRank = 1` to list each unit size once.
+// (alternate barcodes) at the same price, so rank 1 is the row coded like the SKU, then the
+// oldest. L-prefixed rows never get here: sellableOnly drops them. Keep `sizeRank = 1` to list each unit size once.
 export const sizeRank = `ROW_NUMBER() OVER (
   PARTITION BY s.SKU_KEY, u.UTQ_QTY
   ORDER BY CASE WHEN g.GOODS_CODE = s.SKU_CODE THEN 0 ELSE 1 END, g.GOODS_KEY) AS sizeRank`;
@@ -34,8 +34,12 @@ export const sizeRank = `ROW_NUMBER() OVER (
 // campaign bundles sold another way. Matched by code so it needs no join in any query.
 export const hiddenCategoryCodes = ['KK'];
 
+// Goods codes starting with L are the ERP's dozen-price rows (12 or more of one item key in at
+// the cheaper L code). The web never orders on them: customers pick the normal row and the
+// admin switches to L in the ERP when the quantity qualifies.
 export const sellableOnly = `
   g.GOODS_ENABLE = 'Y' AND g.GOODS_P_ENABLE = 'Y'
+  AND g.GOODS_CODE NOT LIKE 'L%'
   AND s.SKU_ENABLE = 'Y' AND s.SKU_P_ENABLE = 'Y'
   AND COALESCE(g.GOODS_ALIAS, '') NOT LIKE '%เลิกผลิต%'
   AND COALESCE(s.SKU_NAME, '') NOT LIKE '%เลิกผลิต%'
