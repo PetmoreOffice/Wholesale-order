@@ -24,7 +24,7 @@ export function GateFrame({ children, animateHeadline = false }) {
   // not downloaded on every visit.
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
-    <main className="relative isolate min-h-dvh overflow-hidden bg-[#CBE9EC]">
+    <main className="relative isolate min-h-dvh overflow-hidden bg-[var(--meadow-sky-mid)]">
       <MeadowScene className="-z-10" />
       <div className="mx-auto flex min-h-dvh w-full max-w-[1280px] flex-col gap-8 px-5 py-6 sm:px-10 lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start lg:gap-16 lg:py-12">
         <header className="lg:pt-6">

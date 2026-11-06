@@ -29,7 +29,7 @@ const leaves = Array.from({ length: 7 }, (_, index) => ({
   delay: -(index * 3.1 + random() * 2).toFixed(1),
   duration: (16 + random() * 10).toFixed(1),
   size: 14 + random() * 12,
-  hue: random() > 0.5 ? '#7FB069' : '#C9A24B'
+  hue: random() > 0.5 ? 'var(--meadow-leaf-green)' : 'var(--meadow-leaf-gold)'
 }));
 
 
@@ -62,8 +62,8 @@ export function MeadowScene({ className = '' }) {
   return (
     <div ref={ref} aria-hidden="true" className={`meadow pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
       {/* Sky and the low morning sun. */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,#9ED3E3_0%,#CBE9EC_45%,#FFF1D6_78%,#FFE2B8_100%)]" />
-      <div className="meadow-layer absolute top-[10%] left-[50%] size-[18vmin] rounded-full bg-[#FFD27A] shadow-[0_0_120px_60px_rgb(255_214_130/0.55)]" data-depth={-8} />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,var(--meadow-sky-top)_0%,var(--meadow-sky-mid)_45%,var(--meadow-sky-glow)_78%,var(--meadow-sky-low)_100%)]" />
+      <div className="meadow-layer absolute top-[10%] left-[50%] size-[18vmin] rounded-full bg-[var(--meadow-sun)] shadow-[0_0_120px_60px_rgb(255_214_130/0.55)]" data-depth={-8} />
 
       {/* Clouds drift slowly across. */}
       {[{ top: '10%', delay: '-12s', scale: 1 }, { top: '22%', delay: '-48s', scale: 0.7 }, { top: '6%', delay: '-80s', scale: 0.85 }].map((cloud) => (
@@ -74,16 +74,16 @@ export function MeadowScene({ className = '' }) {
 
       {/* Three ridges of hills, far to near. */}
       <svg viewBox="0 0 1600 600" preserveAspectRatio="none" className="meadow-layer absolute inset-x-[-4%] bottom-0 h-[62%] w-[108%]" data-depth={6}>
-        <path d="M0 260C180 180 340 210 520 190S880 120 1060 170 1420 150 1600 120V600H0z" fill="#A7D7BE" />
+        <path d="M0 260C180 180 340 210 520 190S880 120 1060 170 1420 150 1600 120V600H0z" fill="var(--meadow-hill-far)" />
       </svg>
       <svg viewBox="0 0 1600 600" preserveAspectRatio="none" className="meadow-layer absolute inset-x-[-4%] bottom-0 h-[50%] w-[108%]" data-depth={14}>
-        <path d="M0 300C220 230 420 250 640 270S1040 330 1260 280 1500 230 1600 250V600H0z" fill="#5FAE8C" />
+        <path d="M0 300C220 230 420 250 640 270S1040 330 1260 280 1500 230 1600 250V600H0z" fill="var(--meadow-hill-mid)" />
       </svg>
 
       {/* A dog and a cat out for a walk along the middle ridge. */}
       <div className="meadow-layer absolute inset-x-0 bottom-[32%] h-12" data-depth={14}>
         <div className="meadow-walk absolute inset-x-0 bottom-0 h-full">
-          <div className="absolute bottom-0 left-0 flex items-end gap-6 text-[#1F5E4A]">
+          <div className="absolute bottom-0 left-0 flex items-end gap-6 text-[var(--meadow-animal)]">
             <Dog className="meadow-bob size-14" strokeWidth={2} />
             <Cat className="meadow-bob size-10 [animation-delay:-0.3s]" strokeWidth={2} />
           </div>
@@ -91,7 +91,7 @@ export function MeadowScene({ className = '' }) {
       </div>
 
       <svg viewBox="0 0 1600 600" preserveAspectRatio="none" className="meadow-layer absolute inset-x-[-4%] bottom-0 h-[34%] w-[108%]" data-depth={24}>
-        <path d="M0 330C260 280 520 300 800 320S1320 360 1600 300V600H0z" fill="#2F8A6B" />
+        <path d="M0 330C260 280 520 300 800 320S1320 360 1600 300V600H0z" fill="var(--meadow-hill-near)" />
       </svg>
 
       {/* Foreground grass, swaying in three layers. */}
@@ -103,7 +103,7 @@ export function MeadowScene({ className = '' }) {
                 <path
                   key={blade.x}
                   d={`M${blade.x - 5} 160 Q${blade.x + blade.lean * 0.4} ${160 - blade.height * 0.6} ${blade.x + blade.lean} ${160 - blade.height} Q${blade.x + 2} ${160 - blade.height * 0.5} ${blade.x + 5} 160z`}
-                  fill={blade.shade > 0.6 ? '#1F7A5E' : blade.shade > 0.3 ? '#14695A' : '#0E5E5A'}
+                  fill={blade.shade > 0.6 ? 'var(--meadow-hill-deep)' : blade.shade > 0.3 ? 'var(--meadow-grass-shade)' : 'var(--brand)'}
                 />
               ))}
             </svg>
@@ -115,7 +115,7 @@ export function MeadowScene({ className = '' }) {
       {/* A few leaves on the morning wind. */}
       {leaves.map((leaf) => (
         <svg key={leaf.delay} viewBox="0 0 24 24" className="meadow-leaf absolute left-0" style={{ top: `${leaf.top}%`, width: leaf.size, height: leaf.size, animationDelay: `${leaf.delay}s`, animationDuration: `${leaf.duration}s` }}>
-          <path d="M3 21C3 11 9 4 21 3c0 11-7 18-18 18zm0 0L13 11" fill={leaf.hue} stroke="#2F6B3A" strokeWidth="1" strokeLinecap="round" />
+          <path d="M3 21C3 11 9 4 21 3c0 11-7 18-18 18zm0 0L13 11" fill={leaf.hue} stroke="var(--meadow-leaf-vein)" strokeWidth="1" strokeLinecap="round" />
         </svg>
       ))}
     </div>

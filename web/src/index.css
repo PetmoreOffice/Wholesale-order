@@ -90,6 +90,32 @@
   --info-soft: #E4EDFB;
   --danger: #CC3344;       /* rejected, destructive */
   --danger-soft: #FCE8EA;
+
+  /* The meadow: sign-in scene, app sky, foot of the rail and the sun glint on the turn card.
+     Decorative only: no text sits on these except white or ink checked for contrast. */
+  --meadow-sky-top: #9ED3E3;
+  --meadow-sky-mid: #CBE9EC;
+  --meadow-sky-glow: #FFF1D6;
+  --meadow-sky-low: #FFE2B8;
+  --meadow-sun: #FFD27A;
+  --meadow-hill-far: #A7D7BE;
+  --meadow-hill-mid: #5FAE8C;
+  --meadow-hill-near: #2F8A6B;
+  --meadow-hill-deep: #1F7A5E;
+  --meadow-grass-shade: #14695A;
+  --meadow-animal: #1F5E4A;
+  --meadow-animal-light: #E8F5EE;
+  --meadow-leaf-green: #7FB069;
+  --meadow-leaf-gold: #C9A24B;
+  --meadow-leaf-vein: #2F6B3A;
+  --sky-1: #D3ECF1;
+  --sky-2: #E9F5F1;
+  --sky-3: #F7F6EA;
+  --sky-4: #FDF1DE;
+  --sky-haze-far: #CFE8D9;
+  --sky-haze-near: #B9DEC8;
+  --rail-foot: #14735F;
+  --sun-glint: #FFE58A;
 }
 
 @layer base {
@@ -131,7 +157,8 @@
    no animation here makes the page restyle, re-lay out or repaint per frame. Grass sways as a
    few layers rather than blade by blade; walkers and clouds cross on a full-width track. */
 @layer components {
-  .meadow-layer { transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
+  /* Layers move only when the pointer does; the browser promotes them for that transition by itself. */
+  .meadow-layer { transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1); }
   .grass-sway { transform-origin: 50% 100%; animation: grass-sway 4.2s ease-in-out infinite alternate; will-change: transform; }
   .meadow-cloud { left: 0; transform: translateX(-30vw) scale(var(--s, 1)); animation: meadow-cloud 120s linear infinite; will-change: transform; }
   .meadow-leaf { animation: meadow-leaf 20s linear infinite; will-change: transform; }
@@ -148,7 +175,7 @@
 @layer components {
   .turn-glint-beam {
     position: absolute; z-index: -1; top: 50%; left: 50%; width: 150%; aspect-ratio: 1;
-    background: conic-gradient(transparent 0 15%, #FFE58A 21%, #fff 25%, #FFE58A 29%, transparent 35% 65%, #FFE58A 71%, #fff 75%, #FFE58A 79%, transparent 85%);
+    background: conic-gradient(transparent 0 15%, var(--sun-glint) 21%, #fff 25%, var(--sun-glint) 29%, transparent 35% 65%, var(--sun-glint) 71%, #fff 75%, var(--sun-glint) 79%, transparent 85%);
     transform: translate(-50%, -50%);
     animation: glint-turn 6s linear infinite;
     will-change: transform;
@@ -170,7 +197,7 @@
 @keyframes sky-turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   /* A still morning: no wind, no walk; the animals rest on the ridge, the leaves stay out. */
-  .grass-sway, .meadow-cloud, .meadow-bob, .meadow-walk, .rail-walk, .sky-rays::after, .turn-glint-beam { animation: none !important; }
+  .grass-sway, .meadow-cloud, .meadow-bob, .meadow-walk, .rail-walk, .sky-rays::after, .turn-glint-beam { animation: none !important; will-change: auto; }
   .meadow-cloud:nth-of-type(1) { transform: translateX(58vw) scale(var(--s, 1)); }
   .meadow-cloud:nth-of-type(2) { transform: translateX(41vw) scale(var(--s, 1)); }
   .meadow-cloud:nth-of-type(3) { transform: translateX(78vw) scale(var(--s, 1)); }
