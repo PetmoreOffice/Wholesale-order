@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { FileDown, UserCheck, X } from 'lucide-react';
 import { adminActionText, adminTransitions, assignableStatuses, messageRequired, statusText } from '@shared/orderWorkflow.js';
 import { api } from '@/lib/api';
-import { downloadFile, orderCsv } from '@/lib/csv';
+import { downloadFile } from '@/lib/csv';
+import { XLSX_TYPE, orderXlsx } from '@/lib/xlsx';
 import { count, dateTime, money, timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { StateBlock } from '@/components/PageHeader';
@@ -258,8 +259,8 @@ function Actions({ order, adminId }) {
       {error && <p role="alert" className="text-[15px] font-semibold text-danger">{error}</p>}
 
       <div>
-        <Button type="button" variant="outline" onClick={() => downloadFile(`${order.orderNumber}.csv`, orderCsv(order), 'text/csv;charset=utf-8')} title="ไฟล์ CSV สำหรับคีย์เข้า ERP (เปิดใน Excel ได้)">
-          <FileDown aria-hidden="true" /> CSV สำหรับ ERP
+        <Button type="button" variant="outline" onClick={() => downloadFile(`${order.orderNumber}.xlsx`, orderXlsx(order), XLSX_TYPE)} title="ไฟล์ Excel สำหรับคีย์เข้า ERP ทุกคอลัมน์เป็นข้อความ">
+          <FileDown aria-hidden="true" /> Excel สำหรับ ERP
         </Button>
       </div>
     </section>

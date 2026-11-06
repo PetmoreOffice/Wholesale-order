@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, mock } from 'node:test';
 import { normalizeStore } from '../src/orders/schema.js';
-import { orderCsv } from '../../web/src/lib/csv.js';
+import { orderXlsx } from '../../web/src/lib/xlsx.js';
 import * as realStore from '../src/orders/store.js';
 
 const draft = () => ({ orderId: 1, customerId: 'customer', status: 'draft',
@@ -16,15 +16,34 @@ test('invalid existing stores fail closed; legacy optional fields remain compati
   }
 });
 
-test('CSV neutralizes formulas including whitespace prefixes and escapes Thai text', () => {
-  for (const value of ['=1+1', '+1', '-1', '@SUM(A1)', '  =1', '\t=1', '\r=1']) {
-    const csv = orderCsv({ items: [{}], customerNote: value });
-    assert.ok(csv.includes(`"'${value}"`));
+// Reads the stored (uncompressed) entries back out of the zip the exporter writes.
+function unzip(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const files = {};
+  for (let at = 0; view.getUint32(at, true) === 0x04034b50;) {
+    const size = view.getUint32(at + 18, true);
+    const nameLength = view.getUint16(at + 26, true);
+    const name = new TextDecoder().decode(bytes.subarray(at + 30, at + 30 + nameLength));
+    files[name] = new TextDecoder().decode(bytes.subarray(at + 30 + nameLength, at + 30 + nameLength + size));
+    at += 30 + nameLength + size;
   }
-  const csv = orderCsv({ items: [{ sku: '00123', quantity: 2 }], customerNote: 'ร้าน "ไทย",\nทดสอบ' });
-  assert.ok(csv.startsWith('\ufeff'));
-  assert.ok(csv.includes('"00123"'));
-  assert.ok(csv.includes('"ร้าน ""ไทย"",\nทดสอบ"'));
+  return files;
+}
+
+test('Excel export keeps every cell as text in Text-formatted columns', () => {
+  const files = unzip(orderXlsx({ orderNumber: 'WO-202611-000003', customerName: 'ร้าน "ไทย" & <ลูก>',
+    customerNote: '=1+1', deliveryDetails: 'บรรทัด 1\nบรรทัด 2',
+    items: [{ goodsCode: '8859798725747', sku: '00123', name: 'กระบะทราย', quantity: 2, unitName: 'PC', unitQuantity: 1 }] }));
+  assert.deepEqual(Object.keys(files).sort(), ['[Content_Types].xml', '_rels/.rels', 'xl/_rels/workbook.xml.rels',
+    'xl/styles.xml', 'xl/workbook.xml', 'xl/worksheets/sheet1.xml']);
+  const sheet = files['xl/worksheets/sheet1.xml'];
+  assert.match(files['xl/styles.xml'], /numFmtId="49"/);
+  assert.equal((sheet.match(/<col /g) || []).length, 10);
+  assert.ok(!/<c [^>]*t="(?!inlineStr)/.test(sheet) && !sheet.includes('<f>'));
+  for (const text of ['8859798725747', '00123', '=1+1', 'ร้าน &quot;ไทย&quot; &amp; &lt;ลูก&gt;', 'บรรทัด 1\nบรรทัด 2']) {
+    assert.ok(sheet.includes(`>${text}</t>`), text);
+  }
+  assert.match(sheet, /<c r="F2" s="1" t="inlineStr"><is><t xml:space="preserve">2<\/t>/);
 });
 
 let store;
