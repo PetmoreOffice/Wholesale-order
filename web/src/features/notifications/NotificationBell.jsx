@@ -40,7 +40,7 @@ export function NotificationBell({ role, className }) {
     <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Popover.Trigger aria-label={label} className={`relative grid size-10 place-items-center rounded-full text-ink-2 transition-colors hover:bg-brand-tint hover:text-brand-deep ${className || ''}`}>
+          <Popover.Trigger aria-label={label} className={`relative grid size-11 place-items-center lg:size-10 rounded-full text-ink-2 transition-colors hover:bg-brand-tint hover:text-brand-deep ${className || ''}`}>
             <Bell aria-hidden="true" className="size-5" />
             {unreadCount > 0 && (
               <span aria-hidden="true" className="num absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-turn px-1 text-center text-xs leading-5 font-bold text-ink ring-2 ring-panel">

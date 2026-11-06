@@ -87,7 +87,7 @@ function ItemsPanel({ order, draft, edits, setEdits, busy }) {
                     <Label htmlFor={`quantity-${item.goodsId}`} className="sr-only">จำนวน {item.name}</Label>
                     <Input
                       id={`quantity-${item.goodsId}`}
-                      className={cn('num h-10 w-20 text-right', field)}
+                      className={cn('num h-11 w-20 text-right sm:h-10', field)}
                       type="number"
                       inputMode="numeric"
                       step="1"
@@ -284,7 +284,7 @@ function OrderView({ order }) {
 
   return (
     <div className={cn(sticky && 'max-lg:pb-20')}>
-      <Link to="/orders" className="mb-2 inline-flex items-center gap-1.5 rounded-md text-[15px] font-semibold text-brand hover:underline">
+      <Link to="/orders" className="mb-2 inline-flex items-center gap-1.5 rounded-md text-[15px] font-semibold text-brand hover:underline max-sm:min-h-11">
         <ArrowLeft aria-hidden="true" className="size-4" /> คำสั่งซื้อของฉัน
       </Link>
       <PageHeader

@@ -15,7 +15,7 @@ export function SidePanel({ title, description, onClose, locked = false, footer,
             <SheetTitle className="text-[20px] leading-snug font-bold text-ink">{title}</SheetTitle>
             {description && <SheetDescription className="mt-0.5 text-[15px] text-ink-2">{description}</SheetDescription>}
           </div>
-          <SheetClose disabled={locked} aria-label="ปิด" className="-mr-2 grid size-10 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-50">
+          <SheetClose disabled={locked} aria-label="ปิด" className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-50">
             <X aria-hidden="true" className="size-5" />
           </SheetClose>
         </SheetHeader>

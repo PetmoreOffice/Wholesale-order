@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { signOut } from 'firebase/auth';
 import { ClipboardList, House, Inbox, LogOut, Package, PawPrint, Settings, ShoppingCart } from 'lucide-react';
-import AnimatedContent from '@/components/react-bits/AnimatedContent';
 import { RailMeadow } from '@/components/meadow/RailMeadow';
 import { SkyBackdrop } from '@/components/meadow/SkyBackdrop';
 import { auth } from '@/firebase';
@@ -35,7 +34,6 @@ export function AppShell({ session, children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const area = location.pathname.split('/')[1];
-  const [settled, setSettled] = useState(null);
   const cartCount = useCartCount(session.uid);
   const customer = session.role === 'customer';
   const links = customer
@@ -76,8 +74,9 @@ export function AppShell({ session, children }) {
         ))}
         <div className="relative mt-auto mb-[132px] border-t border-white/20 px-2 pt-4">
           <p className="truncate font-bold">{session.name}</p>
-          <p className="text-sm text-brand-soft">{session.role === 'admin' ? 'แอดมิน' : 'ลูกค้าขายส่ง'}{demoMode && ' · โหมดจำลอง'}</p>
-          <button type="button" onClick={logOut} className="mt-3 -ml-2 inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-[15px] font-semibold text-brand-soft hover:bg-brand-deep hover:text-white">
+          {/* The rail lightens toward its foot, so brand-soft falls under 4.5:1 here; a whiter tint keeps it legible. */}
+          <p className="text-sm text-white/90">{session.role === 'admin' ? 'แอดมิน' : 'ลูกค้าขายส่ง'}{demoMode && ' · โหมดจำลอง'}</p>
+          <button type="button" onClick={logOut} className="mt-3 -ml-2 inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-[15px] font-semibold text-white/90 hover:bg-brand-deep hover:text-white">
             <LogOut aria-hidden="true" className="size-4" /> ออกจากระบบ
           </button>
         </div>
@@ -86,14 +85,14 @@ export function AppShell({ session, children }) {
       <div className="flex min-w-0 flex-col pb-[76px] lg:pb-0">
         {/* Top bar: brand on phones, notifications and account everywhere. */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-white/70 bg-white/85 px-4 lg:h-16 lg:px-8">
-          <Link to="/" aria-label="Wholesale Order หน้าแรก" className="flex items-center gap-2 font-display font-medium whitespace-nowrap text-brand lg:hidden"><BrandMark className="size-8 text-xs" /><span className="max-[400px]:hidden">Wholesale Order</span></Link>
+          <Link to="/" aria-label="Wholesale Order หน้าแรก" className="flex min-h-11 items-center gap-2 font-display font-medium whitespace-nowrap text-brand lg:hidden"><BrandMark className="size-8 text-xs" /><span className="max-[400px]:hidden">Wholesale Order</span></Link>
           <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:w-full">
             <CommandPalette role={session.role} />
             <span className="flex-1 max-lg:hidden" />
             {customer && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link to="/catalog#cart" className="relative grid size-10 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep lg:hidden" aria-label={`ตะกร้า ${cartCount} รายการ`}>
+                  <Link to="/catalog#cart" className="relative grid size-11 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep lg:hidden" aria-label={`ตะกร้า ${cartCount} รายการ`}>
                     <ShoppingCart aria-hidden="true" className="size-5" />
                     {cartCount > 0 && <span aria-hidden="true" className="num absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-brand px-1 text-center text-xs leading-5 font-bold text-white ring-2 ring-panel">{cartCount}</span>}
                   </Link>
@@ -104,7 +103,7 @@ export function AppShell({ session, children }) {
             <NotificationBell role={session.role} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <button type="button" onClick={logOut} aria-label="ออกจากระบบ" className="grid size-10 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep lg:hidden">
+                <button type="button" onClick={logOut} aria-label="ออกจากระบบ" className="grid size-11 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep lg:hidden">
                   <LogOut aria-hidden="true" className="size-5" />
                 </button>
               </TooltipTrigger>
@@ -115,13 +114,10 @@ export function AppShell({ session, children }) {
 
         <main id="content" className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {/* Each area sprouts up once when it opens (keyed by area, so picking an order in the
-              admin queue does not remount it): transform and opacity only, so the compositor runs
-              it. Once settled, transform and filter are cleared: either would trap the fixed
-              action bars and sheets inside the page. */}
-          <div className={settled === area ? '[&>*]:![filter:none] [&>*]:![transform:none]' : undefined}>
-            <AnimatedContent key={area} trigger="mount" distance={28} scale={0.985} duration={0.5} ease="power3.out" onComplete={() => setSettled(area)}>
-              {children}
-            </AnimatedContent>
+              admin queue does not remount it). A CSS animation on transform and opacity: the
+              compositor runs it, and it leaves no transform behind to trap fixed bars and sheets. */}
+          <div key={area} className="page-enter">
+            {children}
           </div>
         </main>
       </div>

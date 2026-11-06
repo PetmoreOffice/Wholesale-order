@@ -96,7 +96,7 @@ export default function CustomerHome() {
             <section aria-labelledby="open-orders" className="self-start overflow-hidden rounded-xl border border-line bg-panel">
               <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
                 <h2 id="open-orders" className="text-[17px] font-bold">กำลังดำเนินการ</h2>
-                <Link to="/orders" className="text-[15px] font-semibold text-brand hover:underline">ดูทั้งหมด</Link>
+                <Link to="/orders" className="inline-flex items-center text-[15px] font-semibold text-brand hover:underline max-sm:min-h-11">ดูทั้งหมด</Link>
               </div>
               {open.length ? (
                 <ul>{open.map(order => <OrderRow key={order.orderId} order={order} selected={order.orderId === selectedId} onSelect={select} />)}</ul>

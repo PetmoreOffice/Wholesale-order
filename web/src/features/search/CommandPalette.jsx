@@ -60,7 +60,7 @@ export function CommandPalette({ role }) {
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button type="button" onClick={() => setOpen(true)} aria-label={`ค้นหาด่วน (${paletteShortcut})`} className="flex h-10 items-center gap-2 rounded-full border border-line bg-sunken px-3 text-[15px] text-ink-3 transition-colors hover:border-line-strong hover:text-ink-2 max-sm:size-10 max-sm:justify-center max-sm:border-0 max-sm:bg-transparent max-sm:px-0">
+          <button type="button" onClick={() => setOpen(true)} aria-label={`ค้นหาด่วน (${paletteShortcut})`} className="flex h-11 items-center gap-2 rounded-full border lg:h-10 border-line bg-sunken px-3 text-[15px] text-ink-3 transition-colors hover:border-line-strong hover:text-ink-2 max-sm:size-11 max-sm:justify-center max-sm:border-0 max-sm:bg-transparent max-sm:px-0">
             <Search aria-hidden="true" className="size-5" />
             <span className="max-sm:hidden">ค้นหาคำสั่งซื้อหรือสินค้า</span>
             <kbd className="ml-6 rounded-md border border-line bg-panel px-1.5 font-sans text-[12px] font-semibold text-ink-3 max-md:hidden">{paletteShortcut}</kbd>

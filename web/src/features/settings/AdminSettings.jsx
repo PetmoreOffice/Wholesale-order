@@ -51,7 +51,7 @@ export default function AdminSettings() {
                 <li key={section.id}>
                   <a
                     href={`#${section.id}`} onClick={event => jump(event, section.id)} aria-current={active ? 'location' : undefined}
-                    className={cn('flex items-center gap-2.5 rounded-md px-3 py-2 text-[15px] whitespace-nowrap transition-colors', active ? 'bg-panel font-bold text-brand-deep shadow-lift lg:shadow-none lg:ring-1 lg:ring-line' : 'font-semibold text-ink-2 hover:bg-panel hover:text-ink')}
+                    className={cn('flex items-center gap-2.5 rounded-md px-3 py-2 text-[15px] whitespace-nowrap transition-colors max-sm:min-h-11', active ? 'bg-panel font-bold text-brand-deep shadow-lift lg:shadow-none lg:ring-1 lg:ring-line' : 'font-semibold text-ink-2 hover:bg-panel hover:text-ink')}
                   >
                     <section.icon aria-hidden="true" className={cn('size-[18px]', active ? 'text-brand' : 'text-ink-3')} />
                     {section.label}
