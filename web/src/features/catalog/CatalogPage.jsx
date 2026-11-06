@@ -226,7 +226,7 @@ export default function CatalogPage() {
             <div role="status" className="mb-4 flex items-start gap-3 rounded-lg bg-info-soft px-4 py-3 text-[15px] text-info">
               <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
               <span className="flex-1 text-ink">{notice}</span>
-              <button type="button" onClick={() => setNotice('')} aria-label="ปิดข้อความ" className="-my-1.5 -mr-2 grid size-9 place-items-center rounded-md text-info hover:bg-white/60"><X aria-hidden="true" className="size-4" /></button>
+              <button type="button" onClick={() => setNotice('')} aria-label="ปิดข้อความ" className="-my-1.5 -mr-2 grid size-11 place-items-center sm:size-9 rounded-md text-info hover:bg-white/60"><X aria-hidden="true" className="size-4" /></button>
             </div>
           )}
 

@@ -68,7 +68,7 @@ function UserRow({ user, self, onEdit, onToggle, onResend }) {
           aria-label={`${user.disabled ? 'เปิด' : 'ปิด'}ใช้งานบัญชี ${name}`} title={self ? 'ปิดใช้งานบัญชีตัวเองไม่ได้' : undefined}
         />
         <DropdownMenu>
-          <DropdownMenuTrigger aria-label={`ตัวเลือกของ ${name}`} className="grid size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep">
+          <DropdownMenuTrigger aria-label={`ตัวเลือกของ ${name}`} className="grid size-11 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep">
             <MoreHorizontal aria-hidden="true" className="size-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="shadow-overlay">
@@ -162,7 +162,7 @@ export function UsersSection() {
             return (
               <button
                 key={filter.id} type="button" role="tab" aria-selected={selected} aria-controls="users-list" onClick={() => chooseFilter(filter.id)}
-                className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[15px] whitespace-nowrap', selected ? 'bg-brand-tint font-bold text-brand-deep' : 'font-semibold text-ink-2 hover:bg-sunken')}
+                className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[15px] whitespace-nowrap max-sm:min-h-11', selected ? 'bg-brand-tint font-bold text-brand-deep' : 'font-semibold text-ink-2 hover:bg-sunken')}
               >
                 {filter.label}<span className="num text-sm">{count.format(counts[filter.id])}</span>
               </button>

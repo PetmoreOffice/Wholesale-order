@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { MeadowScene } from './MeadowScene.jsx';
-import BlurText from '@/components/react-bits/BlurText';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { ArrowRight, Eye, EyeOff, Mail } from 'lucide-react';
 import { auth } from '@/firebase';
@@ -10,13 +9,19 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 
 const headline = 'สั่งอาหารสัตว์ทั้งร้าน ในไม่กี่คลิก';
+const headlineClass = 'max-w-lg font-display text-[52px] leading-[1.1] font-medium text-brand-deep';
+// BlurText brings the motion library (~100 KB gzipped): load it with the sign-in page only,
+// not in the bundle every signed-in visit downloads first.
+const BlurText = lazy(() => import('@/components/react-bits/BlurText'));
 
 /**
  * Full-screen frame for sign-in and the account states before the app (no Firebase, no role):
  * a morning meadow fills the screen, the promise sits in the sky, the form on a white card.
  */
-export function GateFrame({ children }) {
-  // BlurText does not honour reduced motion on its own and would stay blurred.
+export function GateFrame({ children, animateHeadline = false }) {
+  // BlurText does not honour reduced motion on its own and would stay blurred. Only the sign-in
+  // page animates the headline: the loading and account screens show it still, so BlurText is
+  // not downloaded on every visit.
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
     <main className="relative isolate min-h-dvh overflow-hidden bg-[#CBE9EC]">
@@ -25,9 +30,14 @@ export function GateFrame({ children }) {
         <header className="lg:pt-6">
           <p className="flex items-center gap-3 font-display text-xl font-medium text-brand-deep"><BrandMark />Wholesale Order</p>
           <div className="mt-8 max-lg:hidden lg:mt-16">
-            {reducedMotion
-              ? <p className="max-w-lg font-display text-[52px] leading-[1.1] font-medium text-brand-deep">{headline}</p>
-              : <BlurText text={headline} animateBy="words" delay={120} className="max-w-lg font-display text-[52px] leading-[1.1] font-medium text-brand-deep" />}
+            {reducedMotion || !animateHeadline
+              ? <p className={headlineClass}>{headline}</p>
+              : (
+                // The invisible copy holds the space until the words blur in, so nothing jumps.
+                <Suspense fallback={<p className={`${headlineClass} invisible`}>{headline}</p>}>
+                  <BlurText text={headline} animateBy="words" delay={120} className={headlineClass} />
+                </Suspense>
+              )}
             <p className="mt-5 max-w-md text-[18px] text-brand-deep/85">อาหารและของใช้สัตว์เลี้ยงจากคลังจริง ค้นด้วยชื่อ SKU หรือสแกนบาร์โค้ด แล้วติดตามได้ทุกขั้นจนส่งถึงร้าน</p>
           </div>
         </header>
@@ -79,7 +89,7 @@ export function LoginPage() {
   }
 
   return (
-    <GateFrame>
+    <GateFrame animateHeadline>
       <div className="w-full max-w-[400px]">
         <h1 className="text-[30px] font-bold">เข้าสู่ระบบ</h1>
         <p className="mt-1 mb-7 text-[15px] text-ink-2">ใช้บัญชีที่บริษัทสร้างให้ เพื่อสั่งซื้อหรือดูแลคิวงาน</p>

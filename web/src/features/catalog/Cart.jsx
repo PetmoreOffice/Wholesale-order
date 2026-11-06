@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { maximumOf, minimumOf, unitLabel } from './catalogData.js';
 import { Overlay } from './Overlay.jsx';
 
-export const stepClass = 'grid size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-40 disabled:hover:bg-transparent';
+export const stepClass = 'grid size-11 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-40 disabled:hover:bg-transparent';
 
 /** Typed quantity, kept inside the product's minimum and maximum when the field is left. */
 export function QuantityField({ item, onChange }) {
@@ -28,7 +28,7 @@ export function QuantityField({ item, onChange }) {
       onChange={event => setText(event.target.value.replace(/[^\d]/g, ''))}
       onBlur={commit}
       onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-      className="num h-10 w-14 rounded-md border border-line-strong bg-panel text-center text-[15px] font-bold text-ink"
+      className="num h-11 w-14 rounded-md sm:h-10 border border-line-strong bg-panel text-center text-[15px] font-bold text-ink"
     />
   );
 }
@@ -90,7 +90,7 @@ export function CartBar({ items, onChange, onReview, open, onOpenChange }) {
     <>
       <div className="fixed inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-panel px-4 py-2.5 shadow-lift lg:hidden">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => onOpenChange(true)} aria-haspopup="dialog" className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 text-left">
+          <button type="button" onClick={() => onOpenChange(true)} aria-haspopup="dialog" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md py-1.5 text-left">
             <ShoppingCart aria-hidden="true" className="size-5 shrink-0 text-brand" />
             <span className="text-[16px] font-bold">ตะกร้า</span>
             <span className="text-[15px] text-ink-2">{itemCount(items)}</span>

@@ -268,6 +268,7 @@ The one sharp geometry is the hang tag. Its eyelet end is chamfered by a clip-pa
 Buttons are friendly, confident pills.
 - **Shape:** fully round (9999px), semibold 14px, 8px gap to an optional 16px icon.
 - **Primary:** bag teal with white text. Default height is 36px (`px-4`). Large is 40px (`px-6`), and the sign-in submit is 48px at 17px.
+- **Phones:** under 640px every button size, the cart steppers, chips, top-bar icons and close buttons grow to 44px (`max-sm:` in `button.jsx` and at each fixed-size control): sales staff order one-handed at the shop.
 - **Hover / Focus:** primary darkens to 90% teal. Focus shows a 3px info-blue ring at 50% (global `:focus-visible` uses a solid 3px info-blue outline offset by 2px). Disabled drops to 50% opacity.
 - **Outline:** white with a `line-strong` border and hairline shadow; on hover it turns teal tint with deep teal text. Used for a secondary action next to a primary one, and for the main action when the order is not the viewer's turn.
 - **Secondary / Ghost / Link:** teal tint pill, transparent with a teal-tint hover, and teal text with an underline on hover.
@@ -313,11 +314,12 @@ The catalog lists each SKU once, in its smallest unit (usually `PC`), with its l
 
 ### Effects inventory
 - **Meadow** (sign-in only, `features/auth/MeadowScene.jsx`, drawn in code with no images): sky gradient, low sun, drifting clouds, three ridges of hills, a dog and a cat walking the middle ridge, 140 swaying grass blades and a few leaves on the wind. Each layer shifts a little with the pointer for depth. Under reduced motion the scene holds still: clouds and animals rest in place, the leaves are left out and the pointer has no effect.
-- **BlurText** (sign-in headline): words blur in at a 120ms stagger. Under reduced motion the headline renders as plain text.
+- **BlurText** (sign-in headline): words blur in at a 120ms stagger. It is lazy-loaded (it brings the motion library) and runs only on the sign-in page (`GateFrame animateHeadline`); the loading and account screens show the headline still. Under reduced motion the headline renders as plain text.
+- **Reduced motion:** movement stops everywhere, but dialogs, drawers, tooltips and toasts still fade in over 150ms in place, so an overlay never appears without a cue.
 - **Sky** (behind the work area, fixed, desktop-offset past the rail, `components/meadow/SkyBackdrop.jsx`): a pale blue-to-cream gradient, sun rays from the top-left corner that turn slowly (they no longer lean toward the pointer: restarting that transition on every move was the sky's largest cost), a sun glow, two hazy hills along the bottom. The rays turn on transform only, so the compositor runs them. Under reduced motion they hold still. Drifting pollen was tried and removed at the user's request (2026-11-05).
 - **Rail meadow** (foot of the desktop rail, `components/meadow/RailMeadow.jsx`): two ridges, a dog and a cat walking across on a full-width transform track, and grass that sways as three layers; the phone bottom bar has a fringe of grass on its top edge. Under reduced motion the animals rest on the ridge and the grass holds still.
 - **Clicks** carry no effect. ClickSpark (orange sparks, later falling leaves) was removed at the user's request (2026-11-05).
-- **AnimatedContent** (page entrance): each area sprouts up once, keyed by area: it rises 28px from 98.5% scale over 0.5s, transform and opacity only (an animated mask repainted the whole page each frame). Once it settles, transform and filter are cleared so fixed action bars and sheets are not trapped. It is skipped under reduced motion.
+- **Page entrance** (`.page-enter` in `index.css`, keyed by area in AppShell): each area sprouts up once, rising 28px from 98.5% scale over 0.5s, transform and opacity only. A plain CSS animation with `backwards` fill, so no transform remains to trap fixed action bars and sheets (it replaced react-bits AnimatedContent and its gsap dependency, about a third of the first-load JavaScript). It is skipped under reduced motion.
 - **Overlays:** dialogs fade and rise 8px over 200ms; sheets slide 24px from the right over 220ms, both on `cubic-bezier(0.16, 1, 0.3, 1)`.
 - A global reduced-motion rule clamps all CSS animation and transition to 0.01ms.
 
@@ -337,7 +339,7 @@ The catalog lists each SKU once, in its smallest unit (usually `PC`), with its l
 - **Do** write status as icon plus Thai words; colour only reinforces it.
 - **Do** set order numbers, counts, quantities and dates in tabular figures, and SKU and barcode in JetBrains Mono 500 at full ink.
 - **Do** show counts as Mitr numerals above their label, rolling up with CountUp, and written out plainly under reduced motion.
-- **Do** keep each effect in its own place (the meadow behind sign-in, the sky behind the work area, the meadow at the foot of the rail, AnimatedContent on page entrance) and give each a still, complete reduced-motion state.
+- **Do** keep each effect in its own place (the meadow behind sign-in, the sky behind the work area, the meadow at the foot of the rail, the CSS page entrance) and give each a still, complete reduced-motion state.
 - **Do** use pill buttons, 20px panels, 10px inputs and chips, and teal-tinted soft shadows only for things that hang or float.
 - **Do** keep prices off every customer surface. Reference prices appear only on admin screens (product list column, order detail), and the API never sends them to customers.
 

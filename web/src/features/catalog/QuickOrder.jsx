@@ -86,7 +86,7 @@ export function QuickOrder({ onAdd, onClose }) {
           <h2 id="quick-order-title" className="text-[17px] font-bold">วางรายการ SKU</h2>
           <p className="text-[15px] text-ink-2">หนึ่งบรรทัดต่อหนึ่งสินค้า: รหัส SKU หรือบาร์โค้ด ตามด้วยจำนวน (ไม่ใส่จำนวน = ขั้นต่ำ) คัดลอกจาก Excel ได้</p>
         </div>
-        <button type="button" onClick={onClose} aria-label="ปิดวางรายการ SKU" className="-mr-2 grid size-10 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep"><X aria-hidden="true" className="size-5" /></button>
+        <button type="button" onClick={onClose} aria-label="ปิดวางรายการ SKU" className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep"><X aria-hidden="true" className="size-5" /></button>
       </header>
 
       <div className="grid gap-3 px-4 py-4 sm:px-5">
@@ -151,7 +151,7 @@ export function QuickOrder({ onAdd, onClose }) {
                             aria-label={`เลือกหน่วยของบรรทัด ${row.lineNumber}`}
                             value={row.chosenId ?? ''}
                             onChange={event => chooseUnit(row.lineNumber, event.target.value)}
-                            className={cn('h-10 rounded-md border bg-panel px-2 text-[15px]', row.chosenId === null ? 'border-[#111] ring-2 ring-turn' : 'border-line-strong')}
+                            className={cn('h-11 rounded-md border bg-panel px-2 sm:h-10 text-[15px]', row.chosenId === null ? 'border-[#111] ring-2 ring-turn' : 'border-line-strong')}
                           >
                             <option value="">เลือกหน่วย…</option>
                             {row.products.map(item => <option key={item.goodsId} value={item.goodsId}>{unitLabel(item)}</option>)}

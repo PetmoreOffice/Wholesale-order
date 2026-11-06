@@ -19,7 +19,7 @@ function usePhone() {
 
 function CloseButton({ locked, label, as: Close }) {
   return (
-    <Close disabled={locked} aria-label={label} className="-mr-2 grid size-10 shrink-0 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-50">
+    <Close disabled={locked} aria-label={label} className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-full text-ink-2 hover:bg-brand-tint hover:text-brand-deep disabled:opacity-50">
       <X aria-hidden="true" className="size-5" />
     </Close>
   );

@@ -283,7 +283,7 @@ export function OrderDetail({ orderId, summary, adminId, inline, onClose }) {
             <h2 className="num text-[22px] leading-tight font-bold text-ink">{shown?.orderNumber || 'คำสั่งซื้อ'}</h2>
             {shown && <p className="truncate text-[15px] text-ink-2">{shown.customerName} · <span className="num">{timeAgo(shown.updatedAt)}</span></p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="ปิดรายละเอียด" className="-mr-2 grid size-10 shrink-0 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep">
+          <button type="button" onClick={onClose} aria-label="ปิดรายละเอียด" className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep">
             <X aria-hidden="true" className="size-5" />
           </button>
         </header>

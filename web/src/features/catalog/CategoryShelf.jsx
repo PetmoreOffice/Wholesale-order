@@ -12,7 +12,7 @@ function Chip({ selected, onClick, children, label }) {
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-[15px] font-semibold whitespace-nowrap transition-colors',
+        'inline-flex shrink-0 items-baseline gap-1.5 rounded-full border px-3.5 py-1.5 text-[15px] max-sm:py-2.5 font-semibold whitespace-nowrap transition-colors',
         selected ? 'border-brand bg-brand text-white' : 'border-line-strong bg-panel text-ink hover:border-brand hover:bg-brand-tint'
       )}
     >
