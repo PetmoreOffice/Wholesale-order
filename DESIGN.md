@@ -224,7 +224,7 @@ Loaded weights: Anuphan 400/500/600/700, Mitr 500/600, JetBrains Mono 500 (Mitr 
 - **Headline** (Mitr 500, 28px on phones / 34px from sm, 1.3, balanced wrap): one page title per screen, via PageHeader. The sign-in card and the account-state screens use the same 28px Mitr 500 for their title.
 - **Section title** (Mitr 500, 20px): settings sections, and dialog and sheet titles.
 - **Detail title** (Mitr 600, 22px, tabular): the order number heading in the admin detail panel and the customer home's open order.
-- **Panel title** (Mitr 600, 17px): the head of a panel or list (ตะกร้า, กำลังดำเนินการ, the catalog's SKU range, notifications, order sections). Sub-groups inside a panel are Mitr 600 at 15px in ink-2.
+- **Panel title** (Mitr 600, 17px): the head of a panel or list (ตะกร้า, กำลังดำเนินการ, the catalog's รายการสินค้า, notifications, order sections). Sub-groups inside a panel are Mitr 600 at 15px in ink-2.
 - **Numeral** (Mitr 500, 34px on phones / 46px from sm, line-height 1, tabular): count blocks.
 - **Title** (Mitr 500, 20px on phones / 24px from sm): the hang tag's next-step sentence.
 - **Body** (Anuphan 400, 16px base, 1.6; most UI copy at 15px): lists, descriptions, forms.
