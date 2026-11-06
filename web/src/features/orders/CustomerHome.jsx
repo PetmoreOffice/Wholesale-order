@@ -34,7 +34,7 @@ function SelectedOrder({ orderId }) {
   return (
     <article className="grid gap-5 rounded-xl border border-line bg-panel p-5">
       <header className="flex items-baseline justify-between gap-3">
-        <h2 className="num text-[22px] font-bold">{order.orderNumber}</h2>
+        <h2 className="num text-[22px] font-semibold">{order.orderNumber}</h2>
         <span className="num text-sm text-ink-3">{order.items.length} รายการ</span>
       </header>
       <NextStepTag order={order} role="customer" />
@@ -95,7 +95,7 @@ export default function CustomerHome() {
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
             <section aria-labelledby="open-orders" className="self-start overflow-hidden rounded-xl border border-line bg-panel">
               <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
-                <h2 id="open-orders" className="text-[17px] font-bold">กำลังดำเนินการ</h2>
+                <h2 id="open-orders" className="text-[17px] font-semibold">กำลังดำเนินการ</h2>
                 <Link to="/orders" className="inline-flex items-center text-[15px] font-semibold text-brand hover:underline max-sm:min-h-11">ดูทั้งหมด</Link>
               </div>
               {open.length ? (
@@ -105,7 +105,7 @@ export default function CustomerHome() {
               )}
               {recentClosed.length > 0 && (
                 <div className="border-t border-line px-4 py-4 sm:px-5">
-                  <h3 className="mb-2 text-[15px] font-bold text-ink-2">สั่งซ้ำจากคำสั่งซื้อล่าสุด</h3>
+                  <h3 className="mb-2 text-[15px] font-semibold text-ink-2">สั่งซ้ำจากคำสั่งซื้อล่าสุด</h3>
                   <ul className="flex flex-wrap gap-2">
                     {recentClosed.map(order => (
                       <li key={order.orderId}>

@@ -53,7 +53,7 @@ export function NotificationBell({ role, className }) {
       </Tooltip>
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={8} collisionPadding={12} className="z-50 max-h-[min(70vh,560px)] w-[min(92vw,400px)] overflow-y-auto rounded-xl border border-line bg-panel shadow-overlay">
-          <h2 className="sticky top-0 border-b border-line bg-panel px-4 py-3 text-[17px] font-bold">การแจ้งเตือน</h2>
+          <h2 className="sticky top-0 border-b border-line bg-panel px-4 py-3 text-[17px] font-semibold">การแจ้งเตือน</h2>
           {error && !events.length ? (
             <p className="px-4 py-6 text-[15px] text-ink-2">{error.message}</p>
           ) : events.length ? (

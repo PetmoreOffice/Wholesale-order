@@ -71,7 +71,7 @@ export const CartPanel = forwardRef(function CartPanel({ items, onChange, onRevi
     <section ref={ref} id="cart" tabIndex={-1} aria-labelledby="cart-title" className="sticky top-[88px] flex max-h-[calc(100dvh-112px)] flex-col overflow-hidden rounded-xl border border-line bg-panel outline-none">
       <header className="flex items-center gap-2 border-b border-line px-4 py-3 sm:px-5">
         <ShoppingCart aria-hidden="true" className="size-5 text-brand" />
-        <h2 id="cart-title" className="text-[17px] font-bold">ตะกร้า</h2>
+        <h2 id="cart-title" className="text-[17px] font-semibold">ตะกร้า</h2>
         <span className="ml-auto text-[15px] text-ink-2">{itemCount(items)}</span>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

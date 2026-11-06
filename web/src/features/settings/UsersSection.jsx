@@ -51,7 +51,7 @@ function UserRow({ user, self, onEdit, onToggle, onResend }) {
     <li className={cn('grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3.5 last:border-0 sm:px-5 md:grid-cols-[minmax(0,1fr)_110px_150px_88px]', user.disabled && 'bg-sunken')}>
       <div className="min-w-0">
         <p className={cn('truncate text-[15px] font-bold', user.disabled ? 'text-ink-2' : 'text-ink')}>
-          {name}{self && <span className="ml-2 rounded-md bg-brand-tint px-1.5 py-0.5 text-xs font-bold text-brand-deep">คุณ</span>}
+          {name}{self && <span className="ml-2 rounded-md bg-brand-tint px-1.5 py-0.5 text-[13px] font-bold text-brand-deep">คุณ</span>}
         </p>
         <p className="truncate text-sm text-ink-3">{user.email}{user.profile?.companyName && user.profile.companyName !== name ? ` · ${user.profile.companyName}` : ''}</p>
       </div>

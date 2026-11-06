@@ -233,7 +233,7 @@ export default function CatalogPage() {
           <section ref={listRef} aria-labelledby="catalog-head" aria-busy={loading} className="scroll-mt-20 overflow-hidden rounded-xl border border-line bg-panel">
             {/* The head names the stretch of shelf on screen, like a dictionary's guide words. */}
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-line px-4 py-3 sm:px-5">
-              <h2 id="catalog-head" className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-[17px] font-bold">
+              <h2 id="catalog-head" className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-[17px] font-semibold">
                 {loading ? 'กำลังโหลดสินค้า…' : rows.length ? (
                   <>
                     {scanShown ? <span>ผลค้นหารหัส <span className="sku text-[15px]">{scanShown.code}</span></span> : (

@@ -22,7 +22,7 @@ async function download(path, name) {
   downloadFile(name, await response.blob());
 }
 
-const subTitle = 'px-4 pt-5 pb-2 text-[17px] font-bold text-ink sm:px-5';
+const subTitle = 'px-4 pt-5 pb-2 text-[17px] font-semibold text-ink sm:px-5';
 
 export function DataSection() {
   const queryClient = useQueryClient();

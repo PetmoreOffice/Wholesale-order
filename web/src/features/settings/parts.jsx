@@ -7,7 +7,7 @@ export function SettingsSection({ id, title, description, actions, children }) {
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 overflow-hidden rounded-xl border border-line bg-panel">
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-line px-4 py-4 sm:px-5">
         <div className="min-w-0 max-w-[62ch]">
-          <h2 id={`${id}-title`} className="text-[19px] font-bold text-ink">{title}</h2>
+          <h2 id={`${id}-title`} className="text-[20px] font-medium text-ink">{title}</h2>
           {description && <p className="mt-0.5 text-[15px] text-ink-2">{description}</p>}
         </div>
         {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:max-sm:flex-1">{actions}</div>}

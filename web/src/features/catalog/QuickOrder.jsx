@@ -83,7 +83,7 @@ export function QuickOrder({ onAdd, onClose }) {
     <section aria-labelledby="quick-order-title" className="mb-5 overflow-hidden rounded-xl border border-line bg-panel">
       <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <div>
-          <h2 id="quick-order-title" className="text-[17px] font-bold">วางรายการ SKU</h2>
+          <h2 id="quick-order-title" className="text-[17px] font-semibold">วางรายการ SKU</h2>
           <p className="text-[15px] text-ink-2">หนึ่งบรรทัดต่อหนึ่งสินค้า: รหัส SKU หรือบาร์โค้ด ตามด้วยจำนวน (ไม่ใส่จำนวน = ขั้นต่ำ) คัดลอกจาก Excel ได้</p>
         </div>
         <button type="button" onClick={onClose} aria-label="ปิดวางรายการ SKU" className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep"><X aria-hidden="true" className="size-5" /></button>

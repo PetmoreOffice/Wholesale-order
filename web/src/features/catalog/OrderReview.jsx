@@ -127,7 +127,7 @@ export function OrderReview({ items, accountName, role, onSaved, onClose }) {
     >
       <div className="grid gap-5">
         <section aria-labelledby="review-lines">
-          <h3 id="review-lines" className="mb-2 text-[17px] font-bold">รายการสินค้า <span className="num text-[15px] font-semibold text-ink-2">{count.format(lines.length)} รายการ</span></h3>
+          <h3 id="review-lines" className="mb-2 text-[17px] font-semibold">รายการสินค้า <span className="num text-[15px] font-semibold text-ink-2">{count.format(lines.length)} รายการ</span></h3>
           <ul className="max-h-64 overflow-y-auto rounded-lg border border-line">
             {lines.map(item => (
               <li key={item.goodsId} className="flex items-baseline justify-between gap-3 border-b border-line px-3.5 py-2.5 last:border-0">
