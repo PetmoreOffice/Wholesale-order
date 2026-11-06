@@ -36,7 +36,7 @@ export function OrderHistory({ history }) {
   const shown = all ? entries : entries.slice(0, SHOWN);
   return (
     <div>
-      <h3 className="mb-3 text-[15px] font-bold text-ink-2">ประวัติการดำเนินการ</h3>
+      <h3 className="mb-3 text-[15px] font-semibold text-ink-2">ประวัติการดำเนินการ</h3>
       <ol className="relative grid gap-4 pl-6">
         <span aria-hidden="true" className="absolute top-2 bottom-2 left-[5px] w-[2px] rounded-full bg-line" />
         {shown.map((entry, index) => (

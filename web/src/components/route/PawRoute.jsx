@@ -50,7 +50,7 @@ export function PawRoute({ order, role = 'customer', className }) {
               >
                 {halt ? <CircleX className="size-6" strokeWidth={2.2} /> : <PawPrint className={here ? 'size-6' : 'size-5'} strokeWidth={2.2} />}
               </span>
-              <span className={cn('text-xs leading-tight sm:text-[13px]', halt ? 'font-bold text-danger' : here ? 'font-bold text-ink' : 'font-semibold text-ink-3', passed && !done && 'sr-only')}>
+              <span className={cn('text-[13px] leading-tight', halt ? 'font-bold text-danger' : here ? 'font-bold text-ink' : 'font-semibold text-ink-3', passed && !done && 'sr-only')}>
                 {stopText[status]}
                 <span className="sr-only">{passed ? ' (ผ่านแล้ว)' : halt ? ' (หยุดที่นี่)' : here ? ' (ตอนนี้)' : ''}</span>
               </span>

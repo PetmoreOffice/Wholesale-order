@@ -20,7 +20,7 @@ function GateMessage({ title, children }) {
   return (
     <GateFrame>
       <div className="w-full max-w-[420px]" aria-live="polite">
-        <h1 className="text-[26px] font-bold">{title}</h1>
+        <h1 className="text-[28px] font-medium">{title}</h1>
         <div className="mt-2 text-[16px] text-ink-2">{children}</div>
       </div>
     </GateFrame>

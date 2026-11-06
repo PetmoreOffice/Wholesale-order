@@ -91,7 +91,7 @@ export function LoginPage() {
   return (
     <GateFrame animateHeadline>
       <div className="w-full max-w-[400px]">
-        <h1 className="text-[30px] font-bold">เข้าสู่ระบบ</h1>
+        <h1 className="text-[28px] font-medium">เข้าสู่ระบบ</h1>
         <p className="mt-1 mb-7 text-[15px] text-ink-2">ใช้บัญชีที่บริษัทสร้างให้ เพื่อสั่งซื้อหรือดูแลคิวงาน</p>
         <form onSubmit={login} noValidate className="grid gap-5">
           <FieldGroup>

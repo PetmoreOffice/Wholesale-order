@@ -217,21 +217,28 @@ The palette is a pet-food bag: one deep teal, one loud orange, on calm mint and 
 
 **Character:** Mitr's rounded, friendly Thai letterforms give headings and numerals the voice of a pet-food label. Anuphan keeps long Thai text calm and readable. Mono is for things a person has to match character by character.
 
-Loaded weights: Anuphan 400/500/600/700, Mitr 400/500/600, JetBrains Mono 500. `font-synthesis: none` is set, so unloaded weights fall back to the nearest loaded one rather than being faked.
+Loaded weights: Anuphan 400/500/600/700, Mitr 500/600, JetBrains Mono 500 (Mitr 400 had no user and is not loaded). `font-synthesis: none` is set, so unloaded weights fall back to the nearest loaded one rather than being faked.
 
 ### Hierarchy
 - **Display** (Mitr 500, 52px, 1.1, brand-deep on the sky): the sign-in headline "สั่งอาหารสัตว์ทั้งร้าน ในไม่กี่คลิก" only.
-- **Headline** (Mitr 500, 28px on phones / 34px from sm, 1.3, balanced wrap): one page title per screen, via PageHeader.
+- **Headline** (Mitr 500, 28px on phones / 34px from sm, 1.3, balanced wrap): one page title per screen, via PageHeader. The sign-in card and the account-state screens use the same 28px Mitr 500 for their title.
+- **Section title** (Mitr 500, 20px): settings sections, and dialog and sheet titles.
+- **Detail title** (Mitr 600, 22px, tabular): the order number heading in the admin detail panel and the customer home's open order.
+- **Panel title** (Mitr 600, 17px): the head of a panel or list (ตะกร้า, กำลังดำเนินการ, the catalog's SKU range, notifications, order sections). Sub-groups inside a panel are Mitr 600 at 15px in ink-2.
 - **Numeral** (Mitr 500, 34px on phones / 46px from sm, line-height 1, tabular): count blocks.
 - **Title** (Mitr 500, 20px on phones / 24px from sm): the hang tag's next-step sentence.
 - **Body** (Anuphan 400, 16px base, 1.6; most UI copy at 15px): lists, descriptions, forms.
-- **Label** (Anuphan 600, 13–14px): table headers, rail and bottom-bar labels, badges, paw-stop labels.
+- **Label** (Anuphan 600, 13–14px): table headers, rail and bottom-bar labels, badges, paw-stop labels. Thai text never goes below 13px: tone marks and upper vowels blur at 12px (12px is left only for digits in count pills and the Ctrl K hint).
 - **SKU** (JetBrains Mono 500, 13px, ink, tabular): SKU and barcode cells.
 
 ### Named Rules
 **The Tabular Rule.** Order numbers, quantities, counts and dates always set tabular figures, so columns line up.
 
 **The Mono-Is-For-Codes Rule.** JetBrains Mono appears only on SKU and barcode, always in full ink and never greyed out. It is never used for decoration or headings.
+
+**The Loaded-Weight Rule.** Headings (h1–h3) are Mitr, which is loaded at 500 and 600 only: set them with `font-medium` or `font-semibold`, never `font-bold`, so the code says what the page shows. Bold 700 is for Anuphan body text.
+
+**The Pretty-Wrap Rule.** Headings use `text-wrap: balance` and body text (`p`, `li`, `dd`, `legend`) uses `text-wrap: pretty`, so a Thai line rarely ends on one stranded word.
 
 **The No-Kicker Rule.** Headings stand alone. No small uppercase or letter-spaced label sits above a title, and no letter-spaced uppercase is used anywhere in the UI.
 

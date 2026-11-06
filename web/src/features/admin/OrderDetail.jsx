@@ -18,7 +18,7 @@ import { orderQuery } from '@/features/orders/queries.js';
 import { POLL_MS, sourceText, usersQuery } from './queue.js';
 
 const sectionClass = 'grid gap-3 border-t border-line px-4 py-5 sm:px-5';
-const sectionTitle = 'text-[17px] font-bold text-ink';
+const sectionTitle = 'text-[17px] font-semibold text-ink';
 
 // The reference price is the GOODSMASTER price, read through the existing product lookup
 // (SELECT only; admins receive basePrice, customers never do). Order lines do not store it.
@@ -280,7 +280,7 @@ export function OrderDetail({ orderId, summary, adminId, inline, onClose }) {
       {inline && (
         <header className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
           <div className="min-w-0">
-            <h2 className="num text-[22px] leading-tight font-bold text-ink">{shown?.orderNumber || 'คำสั่งซื้อ'}</h2>
+            <h2 className="num text-[22px] leading-tight font-semibold text-ink">{shown?.orderNumber || 'คำสั่งซื้อ'}</h2>
             {shown && <p className="truncate text-[15px] text-ink-2">{shown.customerName} · <span className="num">{timeAgo(shown.updatedAt)}</span></p>}
           </div>
           <button type="button" onClick={onClose} aria-label="ปิดรายละเอียด" className="-mr-2 grid size-11 shrink-0 sm:size-10 place-items-center rounded-md text-ink-2 hover:bg-brand-tint hover:text-brand-deep">

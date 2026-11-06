@@ -30,7 +30,7 @@ export function SidePanel({ title, description, onClose, locked = false, footer,
 export function ConfirmDialog({ title, children, confirm, onClose }) {
   return (
     <Dialog onClose={onClose} labelledBy="confirm-title" className="grid max-w-[460px] gap-3 p-5 outline-none sm:p-6">
-      <DialogTitle id="confirm-title" className="text-[19px] leading-snug font-bold text-ink">{title}</DialogTitle>
+      <DialogTitle id="confirm-title" className="text-[20px] leading-snug font-medium text-ink">{title}</DialogTitle>
       <div className="text-[15px] text-ink-2">{children}</div>
       <div className="mt-2 flex flex-wrap justify-end gap-2 [&>*]:max-sm:flex-1">{confirm}</div>
     </Dialog>

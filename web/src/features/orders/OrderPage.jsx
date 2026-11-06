@@ -21,7 +21,7 @@ import { orderQuery } from './queries.js';
 import { MessageList, OrderHistory } from './OrderThread.jsx';
 
 const panel = 'rounded-xl border border-line bg-panel px-4 py-4 sm:px-5';
-const sectionTitle = 'text-[17px] font-bold text-ink';
+const sectionTitle = 'text-[17px] font-semibold text-ink';
 const field = 'bg-panel text-[15px] md:text-[15px]';
 // The phone bottom nav is 76px tall; sticky actions sit right above it.
 const aboveNav = { bottom: 'calc(76px + env(safe-area-inset-bottom))' };
