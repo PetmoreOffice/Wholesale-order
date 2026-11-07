@@ -125,15 +125,15 @@ export default function CatalogPage() {
     setSearchParams(params);
   }
 
-  // Pagination sits under the list: bring the new page's first product into view.
+  // Pagination sits under the list: bring the new page's first product into view. The jump is
+  // instant and happens before the list swaps to its loading rows: a smooth scroll still under
+  // way while the page shrinks and grows again gets cancelled on phones and leaves the shopper
+  // back at the pagination.
   function goToPage(nextPage) {
+    const list = listRef.current;
+    if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' });
     setScan(null);
     setPaging({ key: filterKey, page: nextPage });
-    const list = listRef.current;
-    if (list && list.getBoundingClientRect().top < 0) {
-      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      list.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
-    }
   }
 
   function clearSearch() {
